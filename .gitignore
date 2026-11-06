@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv*/
+.env
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+# large / regenerable artefacts
+models/
+data/recordings/
+reports/metrics.sqlite
+.DS_Store

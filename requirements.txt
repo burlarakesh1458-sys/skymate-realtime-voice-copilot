@@ -1,0 +1,16 @@
+# Runtime (pinned; verified on Python 3.12, linux x86_64, CPU-only)
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+httpx==0.28.1
+pydantic==2.10.4
+numpy==2.2.1
+python-dotenv==1.0.1
+websockets==14.1
+# local fallbacks (degraded mode)
+faster-whisper==1.2.1
+ctranslate2==4.8.5
+av==19.0.2
+huggingface_hub==2.4.0
+requests==2.34.2
+piper-tts==1.8.0
+onnxruntime==1.31.1
