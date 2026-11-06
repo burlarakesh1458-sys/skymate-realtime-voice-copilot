@@ -29,6 +29,7 @@ class SessionStart(_Event):
     label: str = "web"  # free-form run tag, stored with every metrics row
     persona: str | None = None
     server_vad: bool = True  # False = client endpoints explicitly (push-to-talk, replay)
+    chunk_mode: Literal["full", "sentence", "clause", "eager"] | None = None  # A/B the TTS chunking per session
     faults: dict[str, Any] | None = None  # honoured only when ALLOW_CLIENT_FAULTS=true
 
 
