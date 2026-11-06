@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+import re
 import struct
 from collections.abc import AsyncIterator
 
@@ -19,7 +20,27 @@ from .base import Message, NoWarmup
 _PERMANENT_STATUS = {400, 401, 403, 404, 422}
 
 
-def _raise_for(provider: str, status: int, body: str) -> None:
+_TRY_AGAIN = re.compile(r"try again in (?:(\d+)m)?([\d.]+)(ms|s)", re.IGNORECASE)
+
+
+def parse_retry_after(headers: httpx.Headers | dict | None, body: str) -> float | None:
+    """Seconds to wait, from a Retry-After header or Groq's "Please try again in 2.5s" message."""
+    if headers:
+        v = headers.get("retry-after")
+        if v:
+            try:
+                return float(v)
+            except ValueError:
+                pass
+    m = _TRY_AGAIN.search(body or "")
+    if m:
+        mins, val, unit = m.groups()
+        secs = float(val) / (1000 if unit.lower() == "ms" else 1)
+        return secs + 60 * int(mins or 0)
+    return None
+
+
+def _raise_for(provider: str, status: int, body: str, headers: httpx.Headers | dict | None = None) -> None:
     code = "http_error"
     try:
         err = json.loads(body).get("error", {})
@@ -27,7 +48,13 @@ def _raise_for(provider: str, status: int, body: str) -> None:
         msg = err.get("message", body)
     except Exception:
         msg = body
-    raise ProviderError(provider, f"HTTP {status}: {msg[:300]}", retryable=status not in _PERMANENT_STATUS, code=code)
+    raise ProviderError(
+        provider,
+        f"HTTP {status}: {msg[:300]}",
+        retryable=status not in _PERMANENT_STATUS,
+        code=code,
+        retry_after_s=parse_retry_after(headers, msg) if status in (429, 503) else None,
+    )
 
 
 def _wrap_transport(provider: str, e: Exception) -> ProviderError:
@@ -59,7 +86,7 @@ class GroqASR(_GroqBase):
         except httpx.HTTPError as e:
             raise _wrap_transport(self.name, e) from e
         if r.status_code != 200:
-            _raise_for(self.name, r.status_code, r.text)
+            _raise_for(self.name, r.status_code, r.text, r.headers)
         return r.json().get("text", "").strip()
 
 
@@ -102,7 +129,7 @@ class GroqLLM(_GroqBase):
             ) as r:
                 if r.status_code != 200:
                     body = (await r.aread()).decode(errors="replace")
-                    _raise_for(self.name, r.status_code, body)
+                    _raise_for(self.name, r.status_code, body, r.headers)
                 async for line in r.aiter_lines():
                     if not line.startswith("data:"):
                         continue
@@ -162,7 +189,7 @@ class GroqTTS(_GroqBase):
             ) as r:
                 if r.status_code != 200:
                     body = (await r.aread()).decode(errors="replace")
-                    _raise_for(self.name, r.status_code, body)
+                    _raise_for(self.name, r.status_code, body, r.headers)
                 buf, header, carry = b"", None, b""
                 async for chunk in r.aiter_bytes():
                     if header is None:

@@ -118,3 +118,39 @@ async def test_retry_skips_permanent_and_timeouts():
 def test_backoff_bounded():
     for attempt in range(10):
         assert 0 <= backoff_delay(attempt, 0.25, 2.0) <= 2.0
+
+
+async def test_retry_honours_server_hint_and_fails_over_when_too_long():
+    slept = []
+
+    async def rec_sleep(d):
+        slept.append(d)
+
+    calls = {"n": 0}
+
+    async def limited():
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise ProviderError("p", "429", retry_after_s=1.5)
+        return "ok"
+
+    assert await retry_async(limited, attempts=2, base_delay=0.1, max_delay=2.0, sleep=rec_sleep) == "ok"
+    assert slept == [1.5]  # waited for the hint, not the (shorter) jittered backoff
+
+    async def long_limit():
+        raise ProviderError("p", "429", retry_after_s=30)
+
+    slept.clear()
+    with pytest.raises(ProviderError):
+        await retry_async(long_limit, attempts=2, base_delay=0.1, max_delay=2.0, sleep=rec_sleep)
+    assert slept == []  # hint exceeds budget -> fail over immediately
+
+
+def test_parse_retry_after():
+    from app.providers.groq import parse_retry_after
+
+    assert parse_retry_after({"retry-after": "3"}, "") == 3.0
+    assert parse_retry_after(None, "Rate limit reached ... Please try again in 2s. Need more") == 2.0
+    assert parse_retry_after(None, "Please try again in 1m7.5s") == 67.5
+    assert parse_retry_after(None, "Please try again in 450ms") == 0.45
+    assert parse_retry_after(None, "nothing here") is None

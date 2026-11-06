@@ -21,11 +21,20 @@ class ProviderError(Exception):
     (bad auth, model requires terms acceptance) that should skip straight to fallback.
     """
 
-    def __init__(self, provider: str, message: str, *, retryable: bool = True, code: str = "provider_error"):
+    def __init__(
+        self,
+        provider: str,
+        message: str,
+        *,
+        retryable: bool = True,
+        code: str = "provider_error",
+        retry_after_s: float | None = None,
+    ):
         super().__init__(f"[{provider}] {message}")
         self.provider = provider
         self.retryable = retryable
         self.code = code
+        self.retry_after_s = retry_after_s  # server hint (Retry-After / "try again in 2s")
 
 
 class CircuitOpenError(ProviderError):
@@ -153,8 +162,14 @@ async def retry_async(
             retryable = retry_on_timeout if isinstance(e, asyncio.TimeoutError) else e.retryable
             if not retryable or attempt == attempts:
                 raise
+            delay = backoff_delay(attempt, base_delay, max_delay)
+            hint = getattr(e, "retry_after_s", None)
+            if hint is not None:
+                if hint > max_delay:
+                    raise  # honouring it would blow the stage budget: fail over now instead
+                delay = max(delay, hint)  # retrying before the server's hint just burns a request
             if on_retry:
                 on_retry(attempt + 1, e)
-            await sleep(backoff_delay(attempt, base_delay, max_delay))
+            await sleep(delay)
     assert last is not None  # pragma: no cover
     raise last  # pragma: no cover
