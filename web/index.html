@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SkyMate · Realtime Voice Copilot</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header>
+    <div>
+      <h1>SkyMate <span class="sub">realtime voice copilot for drone ops</span></h1>
+      <div id="providers" class="muted">not connected</div>
+    </div>
+    <div id="status" class="pill idle">idle</div>
+  </header>
+
+  <main>
+    <section class="controls">
+      <button id="connect">Connect</button>
+      <button id="mic" disabled>🎙 Start mic</button>
+      <label class="toggle"><input type="checkbox" id="handsfree" checked /> hands-free (VAD)</label>
+      <button id="ptt" disabled title="Hold to talk (when hands-free is off)">Hold to talk</button>
+      <button id="interrupt" disabled>⏹ Interrupt</button>
+      <form id="textform"><input id="text" placeholder="…or type a question" disabled /><button disabled id="send">Send</button></form>
+      <div class="meter"><div id="level"></div></div>
+    </section>
+
+    <section class="panel">
+      <h2>Conversation</h2>
+      <div id="partial" class="partial"></div>
+      <div id="log" class="log"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Latency budget per turn <span class="muted">(ms, time-to-first-audio)</span></h2>
+      <div class="legend">
+        <span><i class="c-asr"></i>ASR</span><span><i class="c-ttft"></i>LLM TTFT</span>
+        <span><i class="c-seg"></i>first sentence</span><span><i class="c-tts"></i>TTS TTFB</span>
+        <span><i class="c-ovh"></i>overhead</span><span><i class="c-net"></i>network+client</span>
+      </div>
+      <div id="bars" class="bars"></div>
+    </section>
+  </main>
+
+  <footer class="muted">Audio: 16 kHz PCM16 over a typed JSON WebSocket protocol · barge-in supported · metrics stored per turn</footer>
+  <script src="/static/app.js"></script>
+</body>
+</html>
