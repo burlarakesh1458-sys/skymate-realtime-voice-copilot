@@ -1,0 +1,745 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SkyMate · Real-time Voice Copilot · Rakesh Burla</title>
+<meta name="description" content="SkyMate · Real-time Voice Copilot — AI engineering portfolio project by Rakesh Burla">
+<style>
+:root{--bg:#0b0f17;--card:#121826;--fg:#e6e9ef;--mut:#9aa4b2;--acc:#5eead4;--line:#243044}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 -apple-system,Segoe UI,Inter,Roboto,sans-serif}
+header{border-bottom:1px solid var(--line);background:linear-gradient(180deg,#0f1625,#0b0f17)}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px}
+.top{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:22px 0;flex-wrap:wrap}
+.brand{font-weight:700;font-size:1.15rem}.brand small{display:block;color:var(--mut);font-weight:400;font-size:.85rem}
+.btn{display:inline-block;padding:9px 16px;border:1px solid var(--acc);color:var(--acc);border-radius:8px;text-decoration:none;font-weight:600}
+.btn:hover{background:var(--acc);color:#04201b}
+main{padding:28px 0 60px}h1,h2,h3{line-height:1.25}h1{font-size:2rem}h2{margin-top:2.2em;padding-bottom:.3em;border-bottom:1px solid var(--line)}
+a{color:var(--acc)}code{background:#1b2333;padding:.1em .35em;border-radius:5px;font-size:.92em}
+pre{background:var(--card);border:1px solid var(--line);padding:14px;border-radius:10px;overflow:auto}pre code{background:none;padding:0}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;margin:1em 0}th,td{border:1px solid var(--line);padding:7px 10px;text-align:left}th{background:var(--card)}
+img{max-width:100%;border-radius:10px;background:#fff}blockquote{border-left:3px solid var(--acc);margin:0;padding:.2em 1em;color:var(--mut)}
+pre.mermaid{background:#fff;color:#000}
+footer{border-top:1px solid var(--line);color:var(--mut);padding:20px 0;font-size:.9rem}
+</style></head><body>
+<header><div class="wrap top"><div class="brand">SkyMate · Real-time Voice Copilot<small>AI engineering portfolio · Rakesh Burla</small></div>
+<div><a class="btn" href="https://github.com/burlarakesh1458-sys/skymate-realtime-voice-copilot">View code on GitHub</a></div></div></header>
+<main class="wrap"><h1 id="skymate-a-real-time-voice-copilot-for-drone-operations">SkyMate:
+a real-time voice copilot for drone operations</h1>
+<p><strong>Browser mic → WebSocket → ASR → streaming LLM → streaming TTS
+→ speaker.</strong> It records a latency budget for every turn and keeps
+working when a provider fails.</p>
+<p><img
+src="https://img.shields.io/badge/pytest-45%20passed-brightgreen"
+alt="tests" /> <img
+src="https://img.shields.io/badge/p50%20time--to--first--audio-1.0%20s-blue"
+alt="e2e" /> <img src="https://img.shields.io/badge/python-3.12-blue"
+alt="python" /> <img
+src="https://img.shields.io/badge/license-MIT-lightgrey"
+alt="license" /></p>
+<blockquote>
+<p>Every number in this README was measured in this repo's sandbox (2
+vCPU, 7 GB RAM, no GPU, no microphone), against the live Groq API. Raw
+per-turn data is in <a href="https://github.com/burlarakesh1458-sys/skymate-realtime-voice-copilot/blob/main/reports/"><code>reports/</code></a>.</p>
+</blockquote>
+<hr />
+<h2 id="1-problem">1. Problem</h2>
+<p>A voice assistant only feels natural if it starts speaking about a
+second after you stop. To get there you have to handle three things that
+batch ML systems never deal with:</p>
+<ol type="1">
+<li><strong>Streaming.</strong> Audio arrives in 100 ms chunks. The LLM
+emits tokens. TTS must start on the first sentence, not the whole
+reply.</li>
+<li><strong>A latency budget.</strong> "It feels slow" is not
+actionable. You need to know how many milliseconds go to ASR, LLM
+time-to-first-token, TTS time-to-first-byte and overhead, on every
+turn.</li>
+<li><strong>Failure.</strong> ASR goes down, the LLM stalls, TTS has a
+quota problem. The system has to degrade <em>audibly and honestly</em>
+("One moment.") instead of hanging in silence.</li>
+</ol>
+<p>SkyMate is a drone-ops copilot (pre-flight checks, battery and wind
+limits, failsafes, DGCA Digital Sky basics). It answers in short spoken
+sentences and is built to handle all three.</p>
+<h2 id="2-architecture">2. Architecture</h2>
+<pre class="mermaid">flowchart LR
+  subgraph Browser
+    MIC[Mic + AudioWorklet&lt;br/&gt;16 kHz PCM16, 100 ms] --&gt; WSC[WebSocket client]
+    WSC --&gt; PLAY[Gapless playback&lt;br/&gt;+ barge-in]
+    WSC --&gt; UI[Live transcript +&lt;br/&gt;stacked latency bars]
+  end
+  WSC &lt;--&gt;|typed JSON events| WS
+  subgraph Server [FastAPI server]
+    WS[/ws session/] --&gt; VAD[Energy VAD&lt;br/&gt;endpointing]
+    VAD --&gt; ASR
+    subgraph Pipeline [VoicePipeline turn]
+      ASR[ASR chain&lt;br/&gt;Groq Whisper → faster-whisper] --&gt; LLM[LLM chain, streaming&lt;br/&gt;gpt-oss-20b → 120b → canned]
+      LLM --&gt;|tokens| CH[Sentence chunker&lt;br/&gt;full/sentence/clause/eager]
+      CH --&gt;|segments, asyncio.Queue| TTS[TTS chain&lt;br/&gt;Orpheus → Piper → text-only]
+      ACK[Ack watchdog&lt;br/&gt;&#39;One moment.&#39;] -.-&gt; TTS
+    end
+    RES[[Timeouts · retry + Retry-After · circuit breakers · fault injection]] -.- Pipeline
+    Pipeline --&gt; MET[(SQLite + JSONL&lt;br/&gt;per-turn budget)]
+  end
+  TTS --&gt;|tts.audio frames| WS
+  MET --&gt; REP[scripts/report.py&lt;br/&gt;p50/p95 tables + PNG]
+  REPLAY[scripts/replay.py&lt;br/&gt;recorded WAVs] --&gt;|same protocol| WS</pre>
+<pre class="mermaid">sequenceDiagram
+  autonumber
+  participant B as Browser
+  participant S as Server (session)
+  participant A as ASR
+  participant L as LLM
+  participant T as TTS
+  B-&gt;&gt;S: session.start
+  S--&gt;&gt;B: session.started (provider chains)
+  loop every 100 ms
+    B-&gt;&gt;S: audio.chunk (PCM16)
+  end
+  S--&gt;&gt;B: vad.speech_start
+  B-&gt;&gt;S: vad.end_of_utterance (or server VAD detects 700 ms silence)
+  S--&gt;&gt;B: vad.end_of_utterance(turn_id)
+  S-&gt;&gt;A: transcribe(utterance)
+  A--&gt;&gt;S: text
+  S--&gt;&gt;B: transcript.final
+  S-&gt;&gt;L: stream(messages)
+  Note over S: if no token after 1.5 s → ack &quot;One moment.&quot; (pre-rendered audio)
+  L--&gt;&gt;S: token, token, …
+  S--&gt;&gt;B: llm.token …
+  S-&gt;&gt;T: first segment (as soon as the chunker cuts it)
+  T--&gt;&gt;S: PCM
+  S--&gt;&gt;B: tts.audio (first audio = e2e mark)
+  L--&gt;&gt;S: [done]
+  S-&gt;&gt;T: remaining segments (pipelined)
+  S--&gt;&gt;B: llm.done · tts.audio … · metrics(budget) · turn.done
+  opt user talks over the reply
+    B-&gt;&gt;S: interrupt (or server VAD hears speech)
+    S--&gt;&gt;B: turn.done(status=cancelled)
+  end</pre>
+<p><strong>Code map</strong></p>
+<table>
+<thead>
+<tr class="header">
+<th>path</th>
+<th>what</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>app/protocol.py</code></td>
+<td>Pydantic discriminated unions for every client and server event</td>
+</tr>
+<tr class="even">
+<td><code>app/pipeline.py</code></td>
+<td>One turn: ASR → LLM producer → chunker → queue → TTS consumer, plus
+the ack watchdog, fallbacks and budget</td>
+</tr>
+<tr class="odd">
+<td><code>app/resilience.py</code></td>
+<td><code>ProviderError</code> taxonomy, full-jitter retry that honours
+<code>Retry-After</code>, 3-state <code>CircuitBreaker</code></td>
+</tr>
+<tr class="even">
+<td><code>app/providers/</code></td>
+<td><code>ASRProvider</code> / <code>LLMProvider</code> /
+<code>TTSProvider</code> protocols. Groq, faster-whisper, Piper, canned
+LLM, Deepgram/ElevenLabs/Cartesia adapters, mocks, fault wrappers</td>
+</tr>
+<tr class="odd">
+<td><code>app/chunker.py</code></td>
+<td>Incremental sentence/clause chunker (handles abbreviations,
+decimals, markdown stripping)</td>
+</tr>
+<tr class="even">
+<td><code>app/metrics.py</code></td>
+<td>Stopwatch milestones → budget decomposition → SQLite + JSONL</td>
+</tr>
+<tr class="odd">
+<td><code>app/server.py</code></td>
+<td>FastAPI app, WebSocket sessions, server VAD, barge-in,
+<code>/health</code>, <code>/api/metrics</code></td>
+</tr>
+<tr class="even">
+<td><code>web/</code></td>
+<td>Dependency-free client: AudioWorklet capture, playback queue, live
+transcript, stacked latency bars</td>
+</tr>
+<tr class="odd">
+<td><code>scripts/</code></td>
+<td><code>gen_utterances</code>, <code>replay</code>,
+<code>chunk_ablation.sh</code>, <code>report</code>,
+<code>fault_demo</code>, <code>ws_client_test</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="3-event-protocol">3. Event protocol</h2>
+<p>Every frame is JSON with a <code>type</code> discriminator, and
+unknown or malformed frames are rejected. Audio is base64 PCM16 LE mono:
+16 kHz upstream, with the sample rate stated on every
+<code>tts.audio</code> frame.</p>
+<table>
+<thead>
+<tr class="header">
+<th>direction</th>
+<th><code>type</code></th>
+<th>key fields</th>
+<th>purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>C→S</td>
+<td><code>session.start</code></td>
+<td><code>label</code>, <code>sample_rate</code>,
+<code>server_vad</code>, <code>chunk_mode</code>, <code>persona</code>,
+<code>faults</code>*</td>
+<td>open a session (*faults honoured only with
+<code>ALLOW_CLIENT_FAULTS=true</code>)</td>
+</tr>
+<tr class="even">
+<td>C→S</td>
+<td><code>audio.chunk</code></td>
+<td><code>data</code>, <code>seq</code></td>
+<td>100 ms of mic audio</td>
+</tr>
+<tr class="odd">
+<td>C→S</td>
+<td><code>vad.end_of_utterance</code></td>
+<td><code>client_ts</code></td>
+<td>client endpointing (push-to-talk release, replay)</td>
+</tr>
+<tr class="even">
+<td>C→S</td>
+<td><code>text.input</code></td>
+<td><code>text</code></td>
+<td>typed query (skips ASR)</td>
+</tr>
+<tr class="odd">
+<td>C→S</td>
+<td><code>interrupt</code></td>
+<td><code>reason</code></td>
+<td>barge-in: cancel the in-flight turn</td>
+</tr>
+<tr class="even">
+<td>C→S</td>
+<td><code>metrics.client</code></td>
+<td><code>turn_id</code>, <code>client_e2e_ms</code></td>
+<td>client-measured EoU → first audio</td>
+</tr>
+<tr class="odd">
+<td>C→S</td>
+<td><code>session.end</code></td>
+<td></td>
+<td>close the session</td>
+</tr>
+<tr class="even">
+<td>S→C</td>
+<td><code>session.started</code></td>
+<td><code>session_id</code>, <code>providers</code>,
+<code>faults</code></td>
+<td>ack plus active provider chains</td>
+</tr>
+<tr class="odd">
+<td>S→C</td>
+<td><code>vad.speech_start</code></td>
+<td><code>ts</code></td>
+<td>server VAD heard speech (client stops playback)</td>
+</tr>
+<tr class="even">
+<td>S→C</td>
+<td><code>vad.end_of_utterance</code></td>
+<td><code>turn_id</code>, <code>source</code>
+(client/server_vad/max_length), <code>audio_ms</code></td>
+<td>turn begins</td>
+</tr>
+<tr class="odd">
+<td>S→C</td>
+<td><code>transcript.partial</code></td>
+<td><code>text</code></td>
+<td>interim transcript (opt-in, <code>ASR_PARTIALS=true</code>)</td>
+</tr>
+<tr class="even">
+<td>S→C</td>
+<td><code>transcript.final</code></td>
+<td><code>turn_id</code>, <code>text</code>, <code>provider</code></td>
+<td>final transcript</td>
+</tr>
+<tr class="odd">
+<td>S→C</td>
+<td><code>llm.token</code> / <code>llm.done</code></td>
+<td><code>token</code> / <code>text</code>, <code>provider</code></td>
+<td>streamed reply</td>
+</tr>
+<tr class="even">
+<td>S→C</td>
+<td><code>tts.audio</code></td>
+<td><code>data</code>, <code>sample_rate</code>, <code>seq</code>,
+<code>sentence</code>, <code>provider</code></td>
+<td>≤250 ms audio frames</td>
+</tr>
+<tr class="odd">
+<td>S→C</td>
+<td><code>ack</code></td>
+<td><code>text</code>, <code>reason</code> (llm_slow /
+asr_unavailable)</td>
+<td>degradation notice, also spoken</td>
+</tr>
+<tr class="even">
+<td>S→C</td>
+<td><code>error</code></td>
+<td><code>code</code>, <code>stage</code>, <code>message</code>,
+<code>recoverable</code></td>
+<td>a provider failed (and what happened next)</td>
+</tr>
+<tr class="odd">
+<td>S→C</td>
+<td><code>metrics</code></td>
+<td><code>budget</code>, <code>providers</code>,
+<code>degraded</code></td>
+<td>per-turn latency budget</td>
+</tr>
+<tr class="even">
+<td>S→C</td>
+<td><code>turn.done</code></td>
+<td><code>status</code> (ok/degraded/cancelled/failed),
+<code>text_only</code></td>
+<td>end of turn</td>
+</tr>
+</tbody>
+</table>
+<h2 id="4-quickstart">4. Quickstart</h2>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> venv .venv <span class="kw">&amp;&amp;</span> <span class="bu">.</span> .venv/bin/activate</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> install                 <span class="co"># pinned runtime + dev deps</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> models                  <span class="co"># Piper fallback voice (~60 MB); faster-whisper tiny.en downloads on first use</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="fu">cp</span> .env.example .env         <span class="co"># set GROQ_API_KEY</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> run                     <span class="co"># http://localhost:8000 → Connect → Start mic (or type)</span></span></code></pre></div>
+<p>Docker (the offline fallbacks are baked into the image):
+<code>docker compose up --build</code>.</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> test                    <span class="co"># 45 unit/integration tests, mocked providers, no network</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> utterances              <span class="co"># synthesize the 24-query regression set (Piper)</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> replay LABEL=mine       <span class="co"># replay it through a running server over the real protocol</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> ws-test                 <span class="co"># 7-check live WebSocket client test</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> faults                  <span class="co"># 9 fault-injection scenarios against real providers</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> report                  <span class="co"># p50/p95 tables + PNG charts → reports/LATENCY_REPORT.md</span></span></code></pre></div>
+<p>To swap providers, change config only, for example
+<code>ASR_CHAIN=deepgram,faster_whisper</code>,
+<code>LLM_CHAIN=groq,groq:openai/gpt-oss-120b,degraded</code> or
+<code>TTS_CHAIN=elevenlabs,piper</code>. <code>GROQ_BASE_URL</code> can
+point at any OpenAI-compatible server.</p>
+<h2 id="5-measured-latency-budget">5. Measured latency budget</h2>
+<p><strong>Setup:</strong> 24 synthesized drone-ops questions replayed
+over the WebSocket protocol (<code>scripts/replay.py</code>, explicit
+end-of-utterance). Providers: Groq <code>whisper-large-v3-turbo</code> →
+Groq <code>openai/gpt-oss-20b</code> (reasoning_effort=low) → Piper
+<code>en_US-lessac-low</code> on CPU. <strong><code>e2e</code> =
+server-side end-of-utterance → first <code>tts.audio</code> frame sent.
+<code>client e2e</code> adds the WebSocket hop as measured by the replay
+client.</strong></p>
+<h3
+id="final-configuration-final-eager-chunking-2424-turns-ok-asr-wer-12">Final
+configuration (<code>final</code>: eager chunking, 24/24 turns ok, ASR
+WER 1.2%)</h3>
+<table>
+<thead>
+<tr class="header">
+<th>stage</th>
+<th style="text-align: right;">p50 (ms)</th>
+<th style="text-align: right;">p95 (ms)</th>
+<th style="text-align: right;">share of p50 e2e</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>ASR (EoU → final transcript, incl. upload)</td>
+<td style="text-align: right;">310</td>
+<td style="text-align: right;">589</td>
+<td style="text-align: right;">31%</td>
+</tr>
+<tr class="even">
+<td>LLM time-to-first-token</td>
+<td style="text-align: right;">305</td>
+<td style="text-align: right;">927</td>
+<td style="text-align: right;">30%</td>
+</tr>
+<tr class="odd">
+<td>first token → first speakable segment</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">16</td>
+<td style="text-align: right;">1%</td>
+</tr>
+<tr class="even">
+<td>TTS time-to-first-byte</td>
+<td style="text-align: right;">275</td>
+<td style="text-align: right;">448</td>
+<td style="text-align: right;">27%</td>
+</tr>
+<tr class="odd">
+<td>overhead (queueing, encoding, event loop)</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">&lt;1%</td>
+</tr>
+<tr class="even">
+<td><strong>e2e: time to first audio (server)</strong></td>
+<td style="text-align: right;"><strong>1,002</strong></td>
+<td style="text-align: right;"><strong>1,531</strong></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr class="odd">
+<td>network + client (localhost WS)</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;"></td>
+</tr>
+<tr class="even">
+<td><strong>client e2e</strong></td>
+<td style="text-align: right;"><strong>1,003</strong></td>
+<td style="text-align: right;"><strong>1,532</strong></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr class="odd">
+<td>LLM total</td>
+<td style="text-align: right;">386</td>
+<td style="text-align: right;">986</td>
+<td style="text-align: right;"></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>"Our time to first audio is about 1.0 s at p50. ASR and LLM TTFT take
+roughly 300 ms each, Piper's first audio about 275 ms, and the
+orchestration overhead is 2 ms."</p>
+</blockquote>
+<p><img src="reports/latency_stacked_final.png"
+alt="per-turn budget" /></p>
+<h3 id="first-run-baseline-what-the-budget-revealed">First run
+(<code>baseline</code>): what the budget revealed</h3>
+<p>The first 24-turn run used <code>clause</code> chunking while other
+jobs were saturating the shared 2-vCPU box (1-minute load average ≈ 9.3,
+vs ≈ 4.1 during <code>final</code>):</p>
+<table>
+<thead>
+<tr class="header">
+<th></th>
+<th style="text-align: right;">e2e p50</th>
+<th style="text-align: right;">e2e p95</th>
+<th style="text-align: right;">TTS TTFB p50</th>
+<th style="text-align: right;">TTS share of e2e</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>baseline</code> (clause, load ≈ 9.3)</td>
+<td style="text-align: right;">2,026</td>
+<td style="text-align: right;">4,329</td>
+<td style="text-align: right;">1,293</td>
+<td style="text-align: right;"><strong>64%</strong></td>
+</tr>
+<tr class="even">
+<td><code>final</code> (eager, load ≈ 4.1)</td>
+<td style="text-align: right;">1,002</td>
+<td style="text-align: right;">1,531</td>
+<td style="text-align: right;">275</td>
+<td style="text-align: right;">27%</td>
+</tr>
+</tbody>
+</table>
+<p>The budget pointed straight at <strong>CPU-bound TTS</strong>, not
+the network or the LLM. Most of the baseline-to-final gap comes from CPU
+contention (which this repo does not control), so I isolated the effect
+of the code change with an interleaved A/B:</p>
+<p><img src="reports/latency_p50_p95.png" alt="p50 vs p95" /></p>
+<h3
+id="chunking-ab-interleaved-each-utterance-runs-in-all-4-modes-back-to-back-so-load-drift-hits-every-mode-equally">Chunking
+A/B (interleaved: each utterance runs in all 4 modes back-to-back, so
+load drift hits every mode equally)</h3>
+<table>
+<thead>
+<tr class="header">
+<th>mode</th>
+<th style="text-align: right;">e2e p50</th>
+<th style="text-align: right;">e2e p95</th>
+<th style="text-align: right;">TTS TTFB p50</th>
+<th style="text-align: right;">TTS TTFB p95</th>
+<th style="text-align: right;">median paired saving vs
+<code>full</code></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>full</code> (no streaming to TTS)</td>
+<td style="text-align: right;">1,121</td>
+<td style="text-align: right;">2,060</td>
+<td style="text-align: right;">560</td>
+<td style="text-align: right;">1,490</td>
+<td style="text-align: right;">–</td>
+</tr>
+<tr class="even">
+<td><code>sentence</code></td>
+<td style="text-align: right;">916</td>
+<td style="text-align: right;">1,906</td>
+<td style="text-align: right;">371</td>
+<td style="text-align: right;">1,135</td>
+<td style="text-align: right;">60 ms (6/12 wins)</td>
+</tr>
+<tr class="odd">
+<td><code>clause</code></td>
+<td style="text-align: right;">1,030</td>
+<td style="text-align: right;">1,642</td>
+<td style="text-align: right;">472</td>
+<td style="text-align: right;">940</td>
+<td style="text-align: right;">65 ms (6/12)</td>
+</tr>
+<tr class="even">
+<td><code>eager</code> (≤7-word first segment)</td>
+<td style="text-align: right;">1,022</td>
+<td style="text-align: right;">1,912</td>
+<td style="text-align: right;">361</td>
+<td style="text-align: right;">1,259</td>
+<td style="text-align: right;"><strong>141 ms (7/12)</strong></td>
+</tr>
+</tbody>
+</table>
+<p>What this showed: with Groq, gpt-oss produces its visible answer in a
+burst. The time from first token to first segment is about 10 ms, so
+"wait for a sentence" costs almost nothing. The lever is how much text
+the first TTS call has to synthesize. Shortening the first segment cut
+TTS TTFB p50 from 560 → 361 ms. With n=12 the e2e gains are modest and
+noisy (about half the pairs win), and I report them that way.
+<code>eager</code> is the default; the full tables are in <a
+href="https://github.com/burlarakesh1458-sys/skymate-realtime-voice-copilot/blob/main/reports/LATENCY_REPORT.md"><code>reports/LATENCY_REPORT.md</code></a>.</p>
+<h2 id="6-resilience-matrix">6. Resilience matrix</h2>
+<p>Measured with <code>scripts/fault_demo.py</code>: 9 scenarios, 26
+turns, live Groq plus local fallbacks, and a fresh pipeline and breakers
+per scenario. Faults use the same <code>FaultConfig</code> the server
+reads from <code>FAULT_*</code> env vars. Details are in <a
+href="https://github.com/burlarakesh1458-sys/skymate-realtime-voice-copilot/blob/main/reports/RESILIENCE_REPORT.md"><code>reports/RESILIENCE_REPORT.md</code></a>.</p>
+<table>
+<thead>
+<tr class="header">
+<th>failure</th>
+<th>detection</th>
+<th>response</th>
+<th>measured result</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>ASR down</strong> (Groq Whisper 503)</td>
+<td><code>ProviderError(retryable)</code></td>
+<td>2 retries with jittered backoff → faster-whisper
+<code>tiny.en</code> (local) → breaker opens after 3 failed turns</td>
+<td>4/4 turns answered; ASR stage 2.0–3.0 s on the contended CPU; on
+turn 4 the breaker was open, so Groq wasn't called at all. Fallback WER
+6% (1 of 4 transcripts had errors)</td>
+</tr>
+<tr class="even">
+<td><strong>All ASR down</strong></td>
+<td>chain exhausted</td>
+<td>speak a pre-rendered apology,
+<code>ack(reason=asr_unavailable)</code></td>
+<td>apology audio <strong>379 ms</strong> after EoU, status
+<code>failed</code>, no hang</td>
+</tr>
+<tr class="odd">
+<td><strong>LLM slow</strong> (+2.5 s TTFT)</td>
+<td>ack watchdog (1.5 s)</td>
+<td>speak "One moment.", then the real answer</td>
+<td>ack audio p50 <strong>1.83 s</strong>, answer at 3.7–4.5 s</td>
+</tr>
+<tr class="even">
+<td><strong>LLM hangs</strong></td>
+<td>TTFT timeout 4 s (timeouts are not retried)</td>
+<td>fall over to the canned safety reply</td>
+<td>ack at ~1.8 s, canned answer audio at 5.0–5.2 s, never silent</td>
+</tr>
+<tr class="odd">
+<td><strong>LLM hangs → secondary model</strong></td>
+<td>same</td>
+<td><code>gpt-oss-120b</code></td>
+<td>turn 1: 120b answered (TTFT 4.39 s incl. the 4 s timeout). Turn 2:
+120b returned <strong>real 429s</strong> (shared RPM quota) → canned
+reply</td>
+</tr>
+<tr class="even">
+<td><strong>Orpheus TTS</strong> (real, no injected fault)</td>
+<td>HTTP 400 <code>model_terms_required</code> = permanent</td>
+<td>breaker opens on the first call → Piper</td>
+<td>turn 1 paid one failed call; turns 2–3 skipped Orpheus; all 3
+spoken</td>
+</tr>
+<tr class="odd">
+<td><strong>All TTS down</strong></td>
+<td>chain exhausted on 2 consecutive segments</td>
+<td>text-only reply (<code>turn.done.text_only=true</code>), cached ack
+still plays</td>
+<td>2/2 turns delivered as text, no hang</td>
+</tr>
+<tr class="even">
+<td><strong>30% random transient faults</strong> on every primary</td>
+<td>retryable errors</td>
+<td>retries absorb them</td>
+<td><strong>8/8 turns produced audio</strong> (6 ok). The 2 degraded
+turns were a <em>real</em> Groq TTFT stall (&gt;4 s → canned) and a slow
+1.9 s TTFT (→ ack)</td>
+</tr>
+<tr class="odd">
+<td><strong>User talks over reply</strong></td>
+<td><code>interrupt</code> / server VAD speech start</td>
+<td>cancel LLM and TTS tasks, persist metrics as
+<code>cancelled</code></td>
+<td>interrupt → <code>turn.done(cancelled)</code> in <strong>105
+ms</strong> (ws_client_test)</td>
+</tr>
+<tr class="even">
+<td><strong>Malformed client event</strong></td>
+<td>Pydantic validation</td>
+<td><code>error(bad_event)</code>, session stays open</td>
+<td>verified in ws_client_test</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Live WebSocket client test</strong>
+(<code>scripts/ws_client_test.py</code>, real providers): <strong>7/7
+checks passed.</strong> The checks: health, session handshake, text-turn
+event contract and ordering (client TTFA 667 ms), bad-event isolation,
+barge-in, server-VAD-endpointed audio turn (WER 0), and client fault
+override → local ASR fallback.</p>
+<h2 id="7-design-decisions">7. Design decisions</h2>
+<ul>
+<li><strong>Typed JSON events with base64 audio</strong> instead of raw
+binary frames. It is debuggable in any WS inspector and validated on
+both sides. The cost is about 33% bandwidth overhead on audio, which is
+fine at 32 kB/s upstream (binary frames are future work).</li>
+<li><strong>Batch Whisper plus VAD endpointing</strong> instead of
+streaming ASR. Groq's Whisper is fast enough (p50 310 ms including
+upload) that a streaming ASR's added complexity isn't worth it here.
+Partials are available as opt-in because they cost one ASR call per
+interval against rate limits.</li>
+<li><strong>Producer/consumer per turn.</strong> The LLM task feeds an
+<code>asyncio.Queue</code> of segments and the TTS task drains it, so
+synthesis of sentence <em>n</em> overlaps generation of sentence
+<em>n+1</em>.</li>
+<li><strong>Timeouts are not retried. Only fast transient errors
+are,</strong> and only within budget. A timeout has already spent the
+stage's budget, so the pipeline fails over immediately. A 429 waits for
+the server's <code>Retry-After</code> hint, or skips to the next
+provider if the hint is longer than <code>RETRY_MAX_DELAY_S</code>.</li>
+<li><strong>LLM retries happen only before the first token.</strong>
+After audio has started, a mid-stream failure keeps what was said and
+marks the turn <code>llm_truncated</code>, rather than restarting and
+repeating itself.</li>
+<li><strong>Permanent errors (401/403/400, terms not accepted) open the
+breaker immediately,</strong> so no turn pays a doomed round-trip.
+Breakers are process-wide and keyed by provider, as they would be in
+production.</li>
+<li><strong>Never silent.</strong> The ack watchdog speaks "One moment."
+if no token arrives in 1.5 s. Fixed phrases are pre-rendered at boot, so
+they play even when TTS is down. If every TTS fails, the reply is still
+delivered as text.</li>
+<li><strong>Measure from end-of-utterance</strong> with monotonic
+milestones. The budget's components sum to e2e and the remainder is
+reported as <code>overhead</code>. Metrics are persisted even for
+cancelled turns.</li>
+<li><strong>Local fallbacks are warmed at boot.</strong> Piper's first
+ONNX inference is about 10× slower than steady state, so the server
+reports <code>status: warming</code> until it is ready.</li>
+</ul>
+<h2 id="8-what-went-wrong-and-how-i-fixed-it">8. What went wrong and how
+I fixed it</h2>
+<ol type="1">
+<li><strong>Orpheus TTS needs org-level terms acceptance.</strong> Groq
+returned <code>400 model_terms_required</code>. This can't be fixed from
+code, so I classified it as a <em>permanent</em> error: the breaker
+opens on the first call and Piper takes over. Every TTS number above is
+Piper on CPU. The Orpheus adapter (streaming WAV parser) is implemented
+but <strong>could not be verified</strong>.</li>
+<li><strong>Double endpointing produced a phantom turn.</strong> In
+replay, the server VAD endpointed on trailing silence, and then the
+client's explicit EoU turned the remaining 200 ms of silence into a new
+turn. Whisper hallucinated <em>"Thank you."</em> on it, and the real
+turn was cancelled as superseded. Fix: silent buffers are dropped, and
+sessions can set <code>server_vad=false</code>.</li>
+<li><strong>One bad event killed the session.</strong> A
+<code>metrics.client</code> write hit a missing SQLite table, the
+exception escaped the socket loop, and the in-flight turn was cancelled.
+Fix: per-event error isolation, schema ensured per connection, and
+client metrics that arrive before the turn is persisted are
+buffered.</li>
+<li><strong>My first A/B was confounded.</strong> Running the modes
+sequentially, CPU load from other jobs on the shared box drifted between
+runs (load average 4–10), which swamped the effect. Fix: an interleaved
+A/B (<code>scripts/chunk_ablation.sh</code>), plus recording the load
+average with every replay turn.</li>
+<li><strong>The textbook optimization was smaller than
+expected.</strong> Sentence streaming barely matters when the LLM's
+visible tokens arrive within ~10 ms of each other. The budget showed TTS
+synthesis was the bottleneck, which led to the <code>eager</code>
+first-segment cap (TTS TTFB p50 560 → 361 ms).</li>
+<li><strong>Retries ignored rate-limit hints.</strong> The 120b fallback
+got 429 ("try again in 2s"), and the jittered backoff retried after
+about 0.3 s, burning both retries. Fix: honour <code>Retry-After</code>
+and the "try again in Xs" text, or fail over when the hint exceeds the
+budget.</li>
+<li><strong>One unlucky sentence muted the whole reply.</strong> Under
+30% injected faults, a single segment that failed 3 attempts switched
+the turn to text-only. Fix: drop that segment, and go text-only only
+after 2 consecutive failures.</li>
+<li><strong>The degradation notice was itself slow.</strong> "One
+moment." was synthesized on demand by a contended Piper. Fix: pre-render
+fixed phrases at boot. The ASR-down apology now plays 379 ms after
+EoU.</li>
+<li><strong>A false-positive health check.</strong> <code>httpx</code>
+routed <code>localhost</code> through the sandbox's
+<code>HTTP_PROXY</code>, and the <em>proxy</em> answered
+<code>{"status":"ok"}</code>. Fix: <code>trust_env=False</code> for
+local checks, and the check now also asserts the provider chains are
+present.</li>
+<li><strong>Dependency drift.</strong> <code>faster-whisper 1.1.0</code>
+broke against a newer <code>huggingface_hub</code>, and its PyAV decode
+path broke on <code>av 19</code>. Fix: pin versions, and feed numpy
+arrays directly (no PyAV decode on the hot path).</li>
+</ol>
+<h2 id="9-limitations-honest">9. Limitations (honest)</h2>
+<ul>
+<li><strong>Test audio is synthetic.</strong> The 24 utterances are
+Piper TTS output, so ASR WER (1.2%) is optimistic compared with a real
+microphone in wind or prop noise.</li>
+<li><strong>No real browser or microphone was available.</strong> The
+web client is syntax-checked and its assets are served under test, but
+mic capture, playback and client-side barge-in were not exercised
+end-to-end. The same protocol path <em>was</em> exercised by the replay
+and WS test clients.</li>
+<li><strong>e2e starts at end-of-utterance.</strong> In hands-free mode,
+the user also waits through the VAD hangover
+(<code>VAD_SILENCE_MS=700</code>) before that clock starts.</li>
+<li><strong>Shared, noisy hardware.</strong> Local stages (Piper,
+faster-whisper) varied with other jobs' CPU load. Groq stages share an
+API quota with other work on the same key (the 429s above were
+real).</li>
+<li>The Deepgram, ElevenLabs and Cartesia adapters follow the vendors'
+public REST APIs but were <strong>not run</strong> (no keys). Orpheus
+was not verified either (terms not accepted).</li>
+<li>Single process: breaker state is in memory, and there is no auth or
+rate limiting on <code>/ws</code>.</li>
+</ul>
+<h2 id="10-future-work">10. Future work</h2>
+<ul>
+<li>Streaming ASR (Deepgram or Whisper-streaming) and semantic
+endpointing to cut both ASR time and the 700 ms VAD hangover.</li>
+<li>Binary WebSocket frames and Opus audio. Speculative LLM calls on
+stable partial transcripts.</li>
+<li>Faster first audio: Orpheus once the terms are accepted, or GPU or
+streaming cloud TTS. Phrase-level Piper with a lower-latency voice.</li>
+<li>Real telemetry: MAVLink and tool calls, so the copilot reads
+battery, wind and GPS instead of asking.</li>
+<li>Prometheus metrics, Redis-backed breaker state for multi-instance
+deploys, and a CI job that replays <code>data/utterances</code> and
+gates on p95 regressions.</li>
+</ul>
+<hr />
+<p>MIT © 2026 Rakesh Burla</p>
+</main>
+<footer><div class="wrap">© 2026 Rakesh Burla · MIT License · <a href="https://github.com/burlarakesh1458-sys/skymate-realtime-voice-copilot">https://github.com/burlarakesh1458-sys/skymate-realtime-voice-copilot</a></div></footer>
+<script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";mermaid.initialize({startOnLoad:true,theme:"default"});</script>
+</body></html>
