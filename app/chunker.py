@@ -41,18 +41,30 @@ def clean_for_speech(text: str) -> str:
 
 
 class SentenceChunker:
-    """``mode``: ``clause`` (default; first segment may end at a comma), ``sentence`` (whole
-    sentences only) or ``full`` (no streaming: the entire reply is one segment — the baseline
-    used to quantify what chunking buys)."""
+    """``mode``:
 
-    MODES = ("clause", "sentence", "full")
+    * ``full``     — no streaming: the entire reply is one segment (baseline to quantify chunking)
+    * ``sentence`` — whole sentences only
+    * ``clause``   — like sentence, but the first segment may end at a comma/semicolon
+    * ``eager``    — like clause, and if no boundary has appeared after ``first_max_words`` words the
+                     first segment is cut at a word boundary (lowest time-to-first-audio, slight
+                     prosody cost on the first phrase only)
+    """
+
+    MODES = ("full", "sentence", "clause", "eager")
 
     def __init__(
-        self, first_clause_min_chars: int = 24, min_chars: int = 12, max_chars: int = 220, mode: str = "clause"
+        self,
+        first_clause_min_chars: int = 24,
+        min_chars: int = 12,
+        max_chars: int = 220,
+        mode: str = "clause",
+        first_max_words: int = 7,
     ):
         if mode not in self.MODES:
             raise ValueError(f"mode must be one of {self.MODES}")
         self.mode = mode
+        self.first_max_words = first_max_words
         self.first_clause_min_chars = first_clause_min_chars
         self.min_chars = min_chars
         self.max_chars = max_chars
@@ -75,10 +87,14 @@ class SentenceChunker:
                 continue
             if len(buf[:end].strip()) >= self.min_chars:
                 return buf[:end]
-        if self._emitted == 0 and self.mode == "clause":
+        if self._emitted == 0 and self.mode in ("clause", "eager"):
             for m in _CLAUSE_END.finditer(buf):
                 if m.end() >= self.first_clause_min_chars:
                     return buf[: m.end()]
+        if self._emitted == 0 and self.mode == "eager":
+            words = list(re.finditer(r"\S+(?=\s)", buf))
+            if len(words) >= self.first_max_words:
+                return buf[: words[self.first_max_words - 1].end()]
         if len(buf) >= self.max_chars:
             cut = buf.rfind(" ", 0, self.max_chars)
             return buf[: cut if cut > 0 else self.max_chars]

@@ -52,3 +52,11 @@ def test_modes():
     text = "Given the gusty conditions today, I would land. Then wait."
     assert stream(text, SentenceChunker(mode="sentence"))[0] == "Given the gusty conditions today, I would land."
     assert stream(text, SentenceChunker(mode="full")) == [text]
+
+
+def test_eager_caps_first_segment_words():
+    text = "The safest option in these gusty conditions is to land now. Then wait."
+    segs = stream(text, SentenceChunker(mode="eager", first_max_words=5))
+    assert segs[0] == "The safest option in these"
+    assert segs[1] == "gusty conditions is to land now."
+    assert stream("Hold. Then land.", SentenceChunker(mode="eager")) == ["Hold. Then land."]

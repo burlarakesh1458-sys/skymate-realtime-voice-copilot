@@ -153,6 +153,7 @@ async def replay_ws(args, items) -> list[dict]:
                     rec["turn_id"] = ev["turn_id"]
                     break
             rec["client_e2e_ms"] = round(first_audio, 1) if first_audio else None
+            rec["loadavg_1m"] = round(os.getloadavg()[0], 2)  # shared-CPU context for local stages
             if rec.get("ref") and "transcript" in rec:
                 rec["wer"] = round(wer(rec["ref"], rec["transcript"]), 3)
             results.append(rec)
@@ -232,6 +233,7 @@ def main() -> None:
     ap.add_argument(
         "--faults", help="JSON fault overrides, e.g. '{\"asr_down\": true}' (server needs ALLOW_CLIENT_FAULTS)"
     )
+    ap.add_argument("--chunk-mode", choices=["full", "sentence", "clause", "eager"], help="override server CHUNK_MODE")
     ap.add_argument("--out", help="write per-turn results JSON here")
     args = ap.parse_args()
 
