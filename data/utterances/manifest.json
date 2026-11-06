@@ -1,0 +1,122 @@
+[
+  {
+    "file": "q01.wav",
+    "text": "What should I check before my first flight of the day?",
+    "speech_s": 2.8
+  },
+  {
+    "file": "q02.wav",
+    "text": "My battery is at forty percent and the wind is twenty five knots. Should I continue the survey?",
+    "speech_s": 5.12
+  },
+  {
+    "file": "q03.wav",
+    "text": "How long can a five thousand milliamp hour battery keep a one kilogram quadcopter in the air?",
+    "speech_s": 5.04
+  },
+  {
+    "file": "q04.wav",
+    "text": "What does return to home do if I lose the radio link?",
+    "speech_s": 3.14
+  },
+  {
+    "file": "q05.wav",
+    "text": "Is it safe to fly in light rain?",
+    "speech_s": 1.98
+  },
+  {
+    "file": "q06.wav",
+    "text": "What is the maximum altitude allowed for a nano drone in India?",
+    "speech_s": 3.58
+  },
+  {
+    "file": "q07.wav",
+    "text": "Explain the difference between GPS mode and attitude mode.",
+    "speech_s": 3.42
+  },
+  {
+    "file": "q08.wav",
+    "text": "My drone is drifting to the left in hover. What could cause that?",
+    "speech_s": 3.49
+  },
+  {
+    "file": "q09.wav",
+    "text": "How do I calibrate the compass?",
+    "speech_s": 1.73
+  },
+  {
+    "file": "q10.wav",
+    "text": "Give me a quick checklist for a mapping mission.",
+    "speech_s": 2.64
+  },
+  {
+    "file": "q11.wav",
+    "text": "What overlap should I use for photogrammetry?",
+    "speech_s": 2.5
+  },
+  {
+    "file": "q12.wav",
+    "text": "The motors are getting very hot after landing. Is that a problem?",
+    "speech_s": 3.52
+  },
+  {
+    "file": "q13.wav",
+    "text": "What is a good failsafe setting for a long range flight?",
+    "speech_s": 2.91
+  },
+  {
+    "file": "q14.wav",
+    "text": "How cold is too cold for lithium polymer batteries?",
+    "speech_s": 3.06
+  },
+  {
+    "file": "q15.wav",
+    "text": "Can I fly near an airport for a college project?",
+    "speech_s": 2.7
+  },
+  {
+    "file": "q16.wav",
+    "text": "What does the red zone mean on the Digital Sky map?",
+    "speech_s": 2.62
+  },
+  {
+    "file": "q17.wav",
+    "text": "How should I store my batteries for a month?",
+    "speech_s": 2.29
+  },
+  {
+    "file": "q18.wav",
+    "text": "My video feed keeps breaking up. What should I try?",
+    "speech_s": 3.47
+  },
+  {
+    "file": "q19.wav",
+    "text": "What propeller size suits a five inch racing frame?",
+    "speech_s": 3.01
+  },
+  {
+    "file": "q20.wav",
+    "text": "How do I estimate flight time for a payload drop mission?",
+    "speech_s": 3.18
+  },
+  {
+    "file": "q21.wav",
+    "text": "What should the center of gravity be on a fixed wing?",
+    "speech_s": 2.54
+  },
+  {
+    "file": "q22.wav",
+    "text": "Should I land now if I see a bird of prey circling?",
+    "speech_s": 2.69
+  },
+  {
+    "file": "q23.wav",
+    "text": "What is the safe distance to keep from people when flying?",
+    "speech_s": 3.07
+  },
+  {
+    "file": "q24.wav",
+    "text": "Summarize the steps to arm the drone safely.",
+    "speech_s": 2.88
+  }
+]
