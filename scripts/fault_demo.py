@@ -117,6 +117,7 @@ async def run(only: list[str] | None, gap: float, udir: str) -> list[dict]:
         warm = build(base.with_overrides(asr_chain=["faster_whisper"], tts_chain=["piper"]), http, cache)
         await warm.asr[0].warmup()
         await warm.tts[0].warmup()
+        await VoicePipeline(base, warm).prime_phrase_cache()
         for name, desc, overrides, faults, files in SCENARIOS:
             if only and name not in only:
                 continue

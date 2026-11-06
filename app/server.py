@@ -199,6 +199,10 @@ def create_app(
                         except Exception as e:  # noqa: BLE001
                             app.state.warm[p.name] = f"failed: {e}"
 
+            t = time.perf_counter()
+            await VoicePipeline(settings, app.state.providers, app.state.breakers).prime_phrase_cache()
+            app.state.warm["phrase_cache"] = round((time.perf_counter() - t) * 1000)
+
         app.state.warm_task = asyncio.create_task(warm_all()) if do_warm else None
         yield
         if app.state.warm_task:

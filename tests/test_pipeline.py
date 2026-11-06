@@ -183,3 +183,14 @@ async def test_single_failed_segment_is_dropped_not_text_only(settings):
     assert not rec.text_only
     assert "tts_segment_dropped" in rec.degraded
     assert any(isinstance(e, TTSAudio) for e in events)  # the second sentence was still spoken
+
+
+async def test_ack_phrase_is_served_from_cache(settings):
+    tts = MockTTS(name="mock:cache-tts")
+    pipe = make(settings, [MockASR()], [MockLLM(ttft_s=0.4)], [tts])
+    await pipe.prime_phrase_cache()
+    primed = list(tts.sentences)
+    c, events = ctx()
+    await pipe.run_turn(c, pcm=PCM)
+    assert any(isinstance(e, Ack) for e in events)
+    assert tts.sentences.count(settings.ack_text) == primed.count(settings.ack_text)  # not re-synthesized

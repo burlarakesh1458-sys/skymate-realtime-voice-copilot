@@ -40,7 +40,13 @@ from .resilience import CircuitBreaker, CircuitOpenError, ProviderError, retry_a
 
 log = logging.getLogger("voice.pipeline")
 Emit = Callable[[object], Awaitable[None]]
+ASR_APOLOGY = "Sorry, I'm having trouble hearing right now. Please say that again in a moment."
 FRAME_BYTES = 16000 * 2 // 4  # 250 ms of 16 kHz PCM16 per tts.audio frame (scaled by sample rate)
+
+
+# Fixed phrases ("One moment.", the ASR apology) are synthesized once per TTS voice and replayed
+# from memory, so the degradation notice itself never waits on a slow/contended TTS.
+_PHRASE_CACHE: dict[tuple[str, str], list[tuple[bytes, int]]] = {}
 
 
 class AllProvidersFailed(Exception):
@@ -258,6 +264,13 @@ class VoicePipeline:
     async def _speak_segment(self, ctx: TurnContext, seg: _Segment, seq: list[int]) -> bool:
         """Synthesize one segment through the TTS chain. Returns False if every provider failed."""
         sw = ctx.sw
+        if seg.is_ack:
+            for provider in self.p.tts:
+                cached = _PHRASE_CACHE.get((provider.name, seg.text))
+                if cached:  # pre-rendered audio plays even if that TTS service is down right now
+                    for pcm, sr in cached:
+                        await self._emit_pcm(ctx, seg, seq, provider, pcm, sr)
+                    return True
         for i, provider in enumerate(self.p.tts):
             try:
                 first, it = await self._call_with_policy(
@@ -285,33 +298,53 @@ class VoicePipeline:
                     ctx.record.degraded.append(f"tts_fallback:{provider.name}")
                 sw.mark("tts_first_byte")
             item = first
+            collected: list[tuple[bytes, int]] = []
             try:
                 while item is not None:
                     pcm, sr = item
-                    frame = FRAME_BYTES * sr // 16000
-                    for off in range(0, len(pcm), frame):
-                        await ctx.emit(
-                            TTSAudio(
-                                turn_id=ctx.turn_id,
-                                data=pcm16_to_b64(pcm[off : off + frame]),
-                                sample_rate=sr,
-                                seq=seq[0],
-                                sentence=seg.text if off == 0 else "",
-                                provider=provider.name,
-                            )
-                        )
-                        seq[0] += 1
-                        sw.mark("ack_audio_sent" if seg.is_ack else "first_audio_sent")
+                    if seg.is_ack:
+                        collected.append((pcm, sr))
+                    await self._emit_pcm(ctx, seg, seq, provider, pcm, sr)
                     try:
                         item = await asyncio.wait_for(it.__anext__(), timeout=self.s.tts_timeout_s)
                     except StopAsyncIteration:
                         item = None
+                if collected:
+                    _PHRASE_CACHE[(provider.name, seg.text)] = collected
             except asyncio.CancelledError:
                 raise
             except Exception as e:  # noqa: BLE001 — partial audio already sent; move on
                 self._note_failure(ctx, "tts", provider, e)
             return True
         return False
+
+    async def _emit_pcm(self, ctx: TurnContext, seg: _Segment, seq: list[int], provider, pcm: bytes, sr: int):
+        frame = FRAME_BYTES * sr // 16000
+        for off in range(0, len(pcm), frame):
+            await ctx.emit(
+                TTSAudio(
+                    turn_id=ctx.turn_id,
+                    data=pcm16_to_b64(pcm[off : off + frame]),
+                    sample_rate=sr,
+                    seq=seq[0],
+                    sentence=seg.text if off == 0 else "",
+                    provider=provider.name,
+                )
+            )
+            seq[0] += 1
+            ctx.sw.mark("ack_audio_sent" if seg.is_ack else "first_audio_sent")
+
+    async def prime_phrase_cache(self, phrases: list[str] | None = None) -> None:
+        """Pre-synthesize fixed phrases with the first TTS provider that works (call at boot)."""
+        phrases = phrases or [self.s.ack_text, ASR_APOLOGY]
+        for provider in self.p.tts:
+            try:
+                for text in phrases:
+                    if (provider.name, text) not in _PHRASE_CACHE:
+                        _PHRASE_CACHE[(provider.name, text)] = [c async for c in provider.synthesize(text)]
+                return
+            except Exception as e:  # noqa: BLE001
+                log.warning("phrase cache: %s failed: %s", provider.name, e)
 
     async def _tts_consume(self, ctx: TurnContext, queue: asyncio.Queue) -> bool:
         """Speak segments as they arrive. Returns True if the turn degraded to text-only.
@@ -392,7 +425,7 @@ class VoicePipeline:
                     status = "failed"
                     rec.degraded.append("asr_unavailable")
                     sw.mark("asr_done")
-                    msg = "Sorry, I'm having trouble hearing right now. Please say that again in a moment."
+                    msg = ASR_APOLOGY
                     await ctx.emit(Ack(turn_id=ctx.turn_id, text=msg, reason="asr_unavailable"))
                     await queue.put(_Segment(msg, is_ack=True))
                     await queue.put(None)
