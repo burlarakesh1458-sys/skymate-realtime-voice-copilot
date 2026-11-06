@@ -1,0 +1,12 @@
+services:
+  voice:
+    build: .
+    image: realtime-voice-assistant:1.0.0
+    ports: ["8000:8000"]
+    env_file: [.env]
+    environment:
+      METRICS_DB: /app/reports/metrics.sqlite
+      METRICS_JSONL: /app/reports/metrics.jsonl
+    volumes:
+      - ./reports:/app/reports
+    restart: unless-stopped
