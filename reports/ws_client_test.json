@@ -1,0 +1,57 @@
+{
+  "url": "ws://127.0.0.1:8765/ws",
+  "passed": 7,
+  "total": 7,
+  "results": [
+    {
+      "test": "health",
+      "pass": true,
+      "providers": {
+        "asr": [
+          "groq:whisper-large-v3-turbo",
+          "faster_whisper:tiny.en"
+        ],
+        "llm": [
+          "groq:openai/gpt-oss-20b",
+          "degraded:canned"
+        ],
+        "tts": [
+          "piper:en_US-lessac-low"
+        ]
+      }
+    },
+    {
+      "test": "session.started",
+      "pass": true
+    },
+    {
+      "test": "text_turn_contract",
+      "pass": true,
+      "audio_frames": 37,
+      "client_ttfa_ms": 667,
+      "status": "ok"
+    },
+    {
+      "test": "bad_event_isolated",
+      "pass": true
+    },
+    {
+      "test": "barge_in_cancels",
+      "pass": true,
+      "interrupt_to_turn_done_ms": 105.2
+    },
+    {
+      "test": "server_vad_audio_turn",
+      "pass": true,
+      "transcript": "Is it safe to fly in light rain?",
+      "wer": 0.0
+    },
+    {
+      "test": "asr_down_falls_back_to_local",
+      "pass": true,
+      "asr": "faster_whisper:tiny.en",
+      "transcript": "How do I calibrate the compass?",
+      "e2e_ms": 2850.4
+    }
+  ]
+}

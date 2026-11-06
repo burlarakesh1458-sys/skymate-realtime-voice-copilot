@@ -1,0 +1,1617 @@
+[
+  {
+    "scenario": "baseline",
+    "description": "No faults (reference)",
+    "faults": {
+      "asr_down": false,
+      "llm_timeout": false,
+      "llm_slow_ms": 0,
+      "tts_down": false,
+      "asr_extra_latency_ms": 0,
+      "error_rate": 0.0
+    },
+    "overrides": {},
+    "turns": [
+      {
+        "file": "q01",
+        "ref": "What should I check before my first flight of the day?",
+        "status": "ok",
+        "text_only": false,
+        "providers": {
+          "asr": "groq:whisper-large-v3-turbo",
+          "llm": "groq:openai/gpt-oss-20b",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [],
+        "transcript": "What should I check before my first flight of the day?",
+        "response": "Check the battery charge and temperature, verify the propellers are secure and undamaged, confirm the GPS lock and compass calibration, and review the weather for wind speed and visibility. Also ensure the failsafe settings are correct and the firmware is up to date.",
+        "acks_spoken": [],
+        "first_audio_sentence": "Check the battery charge and temperature,",
+        "error_events": [],
+        "internal_errors": [],
+        "budget": {
+          "asr_ms": 853.9,
+          "llm_ttft_ms": 251.1,
+          "first_segment_ms": 3.4,
+          "tts_ttfb_ms": 478.2,
+          "e2e_ms": 1589.5,
+          "llm_total_ms": 310.8,
+          "tts_total_ms": 3842.2,
+          "turn_total_ms": 4952.9,
+          "overhead_ms": 2.9
+        },
+        "wall_ms": 5123.7,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      },
+      {
+        "file": "q04",
+        "ref": "What does return to home do if I lose the radio link?",
+        "status": "ok",
+        "text_only": false,
+        "providers": {
+          "asr": "groq:whisper-large-v3-turbo",
+          "llm": "groq:openai/gpt-oss-20b",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [],
+        "transcript": "What does return to home do if I lose the radio link?",
+        "response": "If the radio link is lost, the drone will automatically trigger the return\u2011to\u2011home (RTH) sequence: it will fly back to the launch point using the last known GPS position, maintain a safe altitude, and land once it reaches the home location. If GPS is unavailable, it will attempt to return using inertial navigation and then land.",
+        "acks_spoken": [],
+        "first_audio_sentence": "If the radio link is lost,",
+        "error_events": [],
+        "internal_errors": [],
+        "budget": {
+          "asr_ms": 323.1,
+          "llm_ttft_ms": 246.9,
+          "first_segment_ms": 11.1,
+          "tts_ttfb_ms": 899.6,
+          "e2e_ms": 1483.5,
+          "llm_total_ms": 369.3,
+          "tts_total_ms": 5522.0,
+          "turn_total_ms": 6105.9,
+          "overhead_ms": 2.8
+        },
+        "wall_ms": 6272.4,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      }
+    ]
+  },
+  {
+    "scenario": "asr_down",
+    "description": "Primary ASR (Groq Whisper) returns 503 on every call",
+    "faults": {
+      "asr_down": true,
+      "llm_timeout": false,
+      "llm_slow_ms": 0,
+      "tts_down": false,
+      "asr_extra_latency_ms": 0,
+      "error_rate": 0.0
+    },
+    "overrides": {},
+    "turns": [
+      {
+        "file": "q05",
+        "ref": "Is it safe to fly in light rain?",
+        "status": "degraded",
+        "text_only": false,
+        "providers": {
+          "asr": "faster_whisper:tiny.en",
+          "llm": "groq:openai/gpt-oss-20b",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [
+          "asr_fallback:faster_whisper:tiny.en"
+        ],
+        "transcript": "Is it safe to fire in light ring?",
+        "response": "I\u2019m not sure what you mean by \u201clight ring.\u201d Could you explain the situation or give more details?",
+        "acks_spoken": [],
+        "first_audio_sentence": "I\u2019m not sure what you mean by",
+        "error_events": [
+          "asr:injected_503"
+        ],
+        "internal_errors": [
+          "asr:groq:whisper-large-v3-turbo: retry 1 after [groq:whisper-large-v3-turbo] injected fault: ASR service unavailable (503)",
+          "asr:groq:whisper-large-v3-turbo: retry 2 after [groq:whisper-large-v3-turbo] injected fault: ASR service unavailable (503)",
+          "asr:groq:whisper-large-v3-turbo: ProviderError: [groq:whisper-large-v3-turbo] injected fault: ASR service unavailable (503)"
+        ],
+        "budget": {
+          "asr_ms": 2640.5,
+          "llm_ttft_ms": 266.9,
+          "first_segment_ms": 7.2,
+          "tts_ttfb_ms": 377.8,
+          "e2e_ms": 3292.6,
+          "llm_total_ms": 297.4,
+          "tts_total_ms": 880.8,
+          "turn_total_ms": 3795.6,
+          "overhead_ms": 0.2
+        },
+        "wall_ms": 3912.3,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 1,
+            "retry_in_s": 0.0
+          },
+          "faster_whisper:tiny.en": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      },
+      {
+        "file": "q09",
+        "ref": "How do I calibrate the compass?",
+        "status": "degraded",
+        "text_only": false,
+        "providers": {
+          "asr": "faster_whisper:tiny.en",
+          "llm": "groq:openai/gpt-oss-20b",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [
+          "asr_fallback:faster_whisper:tiny.en"
+        ],
+        "transcript": "How do I calibrate the compass?",
+        "response": "Turn the drone slowly in a full circle, keeping it level and away from metal. Let the app record the heading data, then confirm the calibration in the settings. If the compass still drifts, repeat the process or check for nearby magnetic interference.",
+        "acks_spoken": [],
+        "first_audio_sentence": "Turn the drone slowly in a full",
+        "error_events": [
+          "asr:injected_503"
+        ],
+        "internal_errors": [
+          "asr:groq:whisper-large-v3-turbo: retry 1 after [groq:whisper-large-v3-turbo] injected fault: ASR service unavailable (503)",
+          "asr:groq:whisper-large-v3-turbo: retry 2 after [groq:whisper-large-v3-turbo] injected fault: ASR service unavailable (503)",
+          "asr:groq:whisper-large-v3-turbo: ProviderError: [groq:whisper-large-v3-turbo] injected fault: ASR service unavailable (503)"
+        ],
+        "budget": {
+          "asr_ms": 2383.3,
+          "llm_ttft_ms": 278.3,
+          "first_segment_ms": 12.5,
+          "tts_ttfb_ms": 554.7,
+          "e2e_ms": 3228.9,
+          "llm_total_ms": 342.7,
+          "tts_total_ms": 3706.6,
+          "turn_total_ms": 6380.9,
+          "overhead_ms": 0.1
+        },
+        "wall_ms": 6545.3,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 2,
+            "retry_in_s": 0.0
+          },
+          "faster_whisper:tiny.en": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      },
+      {
+        "file": "q11",
+        "ref": "What overlap should I use for photogrammetry?",
+        "status": "degraded",
+        "text_only": false,
+        "providers": {
+          "asr": "faster_whisper:tiny.en",
+          "llm": "groq:openai/gpt-oss-20b",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [
+          "asr_fallback:faster_whisper:tiny.en"
+        ],
+        "transcript": "What overlap should I use for photogrammetry?",
+        "response": "Use about 70\u201380\u202f% forward overlap and 60\u201370\u202f% side overlap for good photogrammetry results. This gives enough redundancy for accurate stitching and 3\u2011D reconstruction.",
+        "acks_spoken": [],
+        "first_audio_sentence": "Use about 70\u201380 % forward overlap and",
+        "error_events": [
+          "asr:injected_503"
+        ],
+        "internal_errors": [
+          "asr:groq:whisper-large-v3-turbo: retry 1 after [groq:whisper-large-v3-turbo] injected fault: ASR service unavailable (503)",
+          "asr:groq:whisper-large-v3-turbo: retry 2 after [groq:whisper-large-v3-turbo] injected fault: ASR service unavailable (503)",
+          "asr:groq:whisper-large-v3-turbo: ProviderError: [groq:whisper-large-v3-turbo] injected fault: ASR service unavailable (503)"
+        ],
+        "budget": {
+          "asr_ms": 3025.4,
+          "llm_ttft_ms": 250.8,
+          "first_segment_ms": 12.0,
+          "tts_ttfb_ms": 909.0,
+          "e2e_ms": 4197.3,
+          "llm_total_ms": 480.9,
+          "tts_total_ms": 2432.2,
+          "turn_total_ms": 5720.5,
+          "overhead_ms": 0.1
+        },
+        "wall_ms": 5848.4,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "open",
+            "failures": 3,
+            "retry_in_s": 24.6
+          },
+          "faster_whisper:tiny.en": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      },
+      {
+        "file": "q17",
+        "ref": "How should I store my batteries for a month?",
+        "status": "degraded",
+        "text_only": false,
+        "providers": {
+          "asr": "faster_whisper:tiny.en",
+          "llm": "groq:openai/gpt-oss-20b",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [
+          "asr_fallback:faster_whisper:tiny.en"
+        ],
+        "transcript": "How should I store my batteries for a month?",
+        "response": "Store them in a cool, dry place at about 40\u201350\u202f% charge. Keep the battery pack in a sealed bag or container to avoid moisture, and check the charge after a month, topping up to 40\u201350\u202f% before use. This keeps the cells healthy.",
+        "acks_spoken": [],
+        "first_audio_sentence": "Store them in a cool, dry place",
+        "error_events": [],
+        "internal_errors": [
+          "asr:groq:whisper-large-v3-turbo: CircuitOpenError: [groq:whisper-large-v3-turbo] circuit open, retry in 21.6s"
+        ],
+        "budget": {
+          "asr_ms": 2030.1,
+          "llm_ttft_ms": 250.9,
+          "first_segment_ms": 9.8,
+          "tts_ttfb_ms": 1132.7,
+          "e2e_ms": 3423.6,
+          "llm_total_ms": 407.4,
+          "tts_total_ms": 3582.5,
+          "turn_total_ms": 5873.3,
+          "overhead_ms": 0.1
+        },
+        "wall_ms": 6027.1,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "open",
+            "failures": 3,
+            "retry_in_s": 15.6
+          },
+          "faster_whisper:tiny.en": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      }
+    ]
+  },
+  {
+    "scenario": "asr_all_down",
+    "description": "Every ASR provider unavailable (no fallback configured)",
+    "faults": {
+      "asr_down": true,
+      "llm_timeout": false,
+      "llm_slow_ms": 0,
+      "tts_down": false,
+      "asr_extra_latency_ms": 0,
+      "error_rate": 0.0
+    },
+    "overrides": {
+      "asr_chain": [
+        "groq"
+      ]
+    },
+    "turns": [
+      {
+        "file": "q05",
+        "ref": "Is it safe to fly in light rain?",
+        "status": "failed",
+        "text_only": false,
+        "providers": {},
+        "degraded": [
+          "asr_unavailable"
+        ],
+        "transcript": "",
+        "response": "",
+        "acks_spoken": [
+          "Sorry, I'm having trouble hearing right now. Please say that again in a moment."
+        ],
+        "first_audio_sentence": "Sorry, I'm having trouble hearing right now. Please say that again in a moment.",
+        "error_events": [
+          "asr:injected_503"
+        ],
+        "internal_errors": [
+          "asr:groq:whisper-large-v3-turbo: retry 1 after [groq:whisper-large-v3-turbo] injected fault: ASR service unavailable (503)",
+          "asr:groq:whisper-large-v3-turbo: retry 2 after [groq:whisper-large-v3-turbo] injected fault: ASR service unavailable (503)",
+          "asr:groq:whisper-large-v3-turbo: ProviderError: [groq:whisper-large-v3-turbo] injected fault: ASR service unavailable (503)"
+        ],
+        "budget": {
+          "asr_ms": 378.8,
+          "llm_ttft_ms": null,
+          "first_segment_ms": null,
+          "tts_ttfb_ms": null,
+          "e2e_ms": null,
+          "llm_total_ms": null,
+          "tts_total_ms": null,
+          "turn_total_ms": 379.1,
+          "overhead_ms": null,
+          "ack_audio_ms": 378.9
+        },
+        "wall_ms": 515.4,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 1,
+            "retry_in_s": 0.0
+          }
+        }
+      }
+    ]
+  },
+  {
+    "scenario": "llm_slow",
+    "description": "LLM first token delayed by 2.5 s (under the 4 s TTFT timeout)",
+    "faults": {
+      "asr_down": false,
+      "llm_timeout": false,
+      "llm_slow_ms": 2500,
+      "tts_down": false,
+      "asr_extra_latency_ms": 0,
+      "error_rate": 0.0
+    },
+    "overrides": {},
+    "turns": [
+      {
+        "file": "q06",
+        "ref": "What is the maximum altitude allowed for a nano drone in India?",
+        "status": "degraded",
+        "text_only": false,
+        "providers": {
+          "asr": "groq:whisper-large-v3-turbo",
+          "llm": "groq:openai/gpt-oss-20b",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [
+          "ack_spoken"
+        ],
+        "transcript": "What is the maximum altitude allowed for a nano-drone in India?",
+        "response": "The DGCA Digital Sky rules allow nano\u2011drones (\u2264250\u202fg) to fly up to 400\u202fft (about 120\u202fm) above ground level.",
+        "acks_spoken": [
+          "One moment."
+        ],
+        "first_audio_sentence": "One moment.",
+        "error_events": [],
+        "internal_errors": [],
+        "budget": {
+          "asr_ms": 368.9,
+          "llm_ttft_ms": 2865.5,
+          "first_segment_ms": 17.0,
+          "tts_ttfb_ms": 1297.6,
+          "e2e_ms": 4549.2,
+          "llm_total_ms": 3147.5,
+          "tts_total_ms": 2739.3,
+          "turn_total_ms": 5990.8,
+          "overhead_ms": 0.2,
+          "ack_audio_ms": 1870.1
+        },
+        "wall_ms": 6185.5,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      },
+      {
+        "file": "q13",
+        "ref": "What is a good failsafe setting for a long range flight?",
+        "status": "degraded",
+        "text_only": false,
+        "providers": {
+          "asr": "groq:whisper-large-v3-turbo",
+          "llm": "groq:openai/gpt-oss-20b",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [
+          "ack_spoken"
+        ],
+        "transcript": "What is a good failsafe setting for a long-range flight?",
+        "response": "It depends on your battery, wind, and distance. Tell me your battery capacity, average wind speed, and how far you plan to fly, and I\u2019ll suggest a safe failsafe.",
+        "acks_spoken": [
+          "One moment."
+        ],
+        "first_audio_sentence": "One moment.",
+        "error_events": [],
+        "internal_errors": [],
+        "budget": {
+          "asr_ms": 296.0,
+          "llm_ttft_ms": 2777.4,
+          "first_segment_ms": 9.6,
+          "tts_ttfb_ms": 591.6,
+          "e2e_ms": 3674.7,
+          "llm_total_ms": 2901.3,
+          "tts_total_ms": 1991.2,
+          "turn_total_ms": 5074.3,
+          "overhead_ms": 0.1,
+          "ack_audio_ms": 1798.3
+        },
+        "wall_ms": 5264.6,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      }
+    ]
+  },
+  {
+    "scenario": "llm_timeout_to_canned",
+    "description": "Primary LLM hangs forever; only fallback is the canned degraded reply",
+    "faults": {
+      "asr_down": false,
+      "llm_timeout": true,
+      "llm_slow_ms": 0,
+      "tts_down": false,
+      "asr_extra_latency_ms": 0,
+      "error_rate": 0.0
+    },
+    "overrides": {},
+    "turns": [
+      {
+        "file": "q02",
+        "ref": "My battery is at forty percent and the wind is twenty five knots. Should I continue the survey?",
+        "status": "degraded",
+        "text_only": false,
+        "providers": {
+          "asr": "groq:whisper-large-v3-turbo",
+          "llm": "degraded:canned",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [
+          "ack_spoken",
+          "llm_fallback:degraded:canned"
+        ],
+        "transcript": "My battery is at 40% and the wind is 25 knots. Should I continue the survey?",
+        "response": "I can't reach my reasoning service right now, so I'll keep this simple. Hold a safe hover or return to home if battery or link is marginal, and ask me again in a few seconds.",
+        "acks_spoken": [
+          "One moment."
+        ],
+        "first_audio_sentence": "One moment.",
+        "error_events": [
+          "llm:timeout"
+        ],
+        "internal_errors": [
+          "llm:groq:openai/gpt-oss-20b: timeout: "
+        ],
+        "budget": {
+          "asr_ms": 273.7,
+          "llm_ttft_ms": 4008.7,
+          "first_segment_ms": 0.3,
+          "tts_ttfb_ms": 681.6,
+          "e2e_ms": 4964.7,
+          "llm_total_ms": 4009.7,
+          "tts_total_ms": 2780.0,
+          "turn_total_ms": 7062.7,
+          "overhead_ms": 0.4,
+          "ack_audio_ms": 1775.6
+        },
+        "wall_ms": 7241.5,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 1,
+            "retry_in_s": 0.0
+          },
+          "degraded:canned": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      },
+      {
+        "file": "q22",
+        "ref": "Should I land now if I see a bird of prey circling?",
+        "status": "degraded",
+        "text_only": false,
+        "providers": {
+          "asr": "groq:whisper-large-v3-turbo",
+          "llm": "degraded:canned",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [
+          "ack_spoken",
+          "llm_fallback:degraded:canned"
+        ],
+        "transcript": "Should I land now if I see a bird of prey circling?",
+        "response": "I can't reach my reasoning service right now, so I'll keep this simple. Hold a safe hover or return to home if battery or link is marginal, and ask me again in a few seconds.",
+        "acks_spoken": [
+          "One moment."
+        ],
+        "first_audio_sentence": "One moment.",
+        "error_events": [
+          "llm:timeout"
+        ],
+        "internal_errors": [
+          "llm:groq:openai/gpt-oss-20b: timeout: "
+        ],
+        "budget": {
+          "asr_ms": 333.1,
+          "llm_ttft_ms": 4002.4,
+          "first_segment_ms": 0.4,
+          "tts_ttfb_ms": 848.6,
+          "e2e_ms": 5184.6,
+          "llm_total_ms": 4128.0,
+          "tts_total_ms": 2786.9,
+          "turn_total_ms": 7123.2,
+          "overhead_ms": 0.1,
+          "ack_audio_ms": 1834.4
+        },
+        "wall_ms": 7320.3,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 2,
+            "retry_in_s": 0.0
+          },
+          "degraded:canned": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      }
+    ]
+  },
+  {
+    "scenario": "llm_timeout_to_secondary",
+    "description": "Primary LLM hangs; chain falls over to a second Groq model (gpt-oss-120b)",
+    "faults": {
+      "asr_down": false,
+      "llm_timeout": true,
+      "llm_slow_ms": 0,
+      "tts_down": false,
+      "asr_extra_latency_ms": 0,
+      "error_rate": 0.0
+    },
+    "overrides": {
+      "llm_chain": [
+        "groq",
+        "groq:openai/gpt-oss-120b",
+        "degraded"
+      ]
+    },
+    "turns": [
+      {
+        "file": "q02",
+        "ref": "My battery is at forty percent and the wind is twenty five knots. Should I continue the survey?",
+        "status": "degraded",
+        "text_only": false,
+        "providers": {
+          "asr": "groq:whisper-large-v3-turbo",
+          "llm": "groq:openai/gpt-oss-120b",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [
+          "ack_spoken",
+          "llm_fallback:groq:openai/gpt-oss-120b"
+        ],
+        "transcript": "My battery is at 40% and the wind is 25 knots. Should I continue the survey?",
+        "response": "No, you should abort the survey. With only 40\u202f% battery left and wind around 25\u202fknots, you won\u2019t have enough reserve to safely complete the mission and return. Land or return home now and wait for better conditions.",
+        "acks_spoken": [
+          "One moment."
+        ],
+        "first_audio_sentence": "One moment.",
+        "error_events": [
+          "llm:timeout"
+        ],
+        "internal_errors": [
+          "llm:groq:openai/gpt-oss-20b: timeout: "
+        ],
+        "budget": {
+          "asr_ms": 327.0,
+          "llm_ttft_ms": 4390.3,
+          "first_segment_ms": 16.9,
+          "tts_ttfb_ms": 801.0,
+          "e2e_ms": 5535.2,
+          "llm_total_ms": 4533.6,
+          "tts_total_ms": 3485.2,
+          "turn_total_ms": 8219.5,
+          "overhead_ms": 0.0,
+          "ack_audio_ms": 1827.6
+        },
+        "wall_ms": 8531.8,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 1,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-120b": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      },
+      {
+        "file": "q22",
+        "ref": "Should I land now if I see a bird of prey circling?",
+        "status": "degraded",
+        "text_only": false,
+        "providers": {
+          "asr": "groq:whisper-large-v3-turbo",
+          "llm": "degraded:canned",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [
+          "ack_spoken",
+          "llm_fallback:degraded:canned"
+        ],
+        "transcript": "Should I land now if I see a bird of prey circling?",
+        "response": "I can't reach my reasoning service right now, so I'll keep this simple. Hold a safe hover or return to home if battery or link is marginal, and ask me again in a few seconds.",
+        "acks_spoken": [
+          "One moment."
+        ],
+        "first_audio_sentence": "One moment.",
+        "error_events": [
+          "llm:timeout",
+          "llm:rate_limit_exceeded"
+        ],
+        "internal_errors": [
+          "llm:groq:openai/gpt-oss-20b: timeout: ",
+          "llm:groq:openai/gpt-oss-120b: ProviderError: [groq:openai/gpt-oss-120b] HTTP 429: Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01m4qehpzhes290vf2dr4qhhzj` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199533, Requested 561. Please try again in 40.608s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/setting"
+        ],
+        "budget": {
+          "asr_ms": 417.0,
+          "llm_ttft_ms": 4086.1,
+          "first_segment_ms": 0.2,
+          "tts_ttfb_ms": 792.5,
+          "e2e_ms": 5296.0,
+          "llm_total_ms": 4086.8,
+          "tts_total_ms": 2990.4,
+          "turn_total_ms": 7493.8,
+          "overhead_ms": 0.2,
+          "ack_audio_ms": 1919.9
+        },
+        "wall_ms": 7685.0,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 2,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-120b": {
+            "state": "closed",
+            "failures": 1,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "degraded:canned": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      }
+    ]
+  },
+  {
+    "scenario": "orpheus_primary",
+    "description": "Real Groq Orpheus TTS as primary (no injected fault), Piper as fallback",
+    "faults": {
+      "asr_down": false,
+      "llm_timeout": false,
+      "llm_slow_ms": 0,
+      "tts_down": false,
+      "asr_extra_latency_ms": 0,
+      "error_rate": 0.0
+    },
+    "overrides": {
+      "tts_chain": [
+        "groq",
+        "piper"
+      ]
+    },
+    "turns": [
+      {
+        "file": "q10",
+        "ref": "Give me a quick checklist for a mapping mission.",
+        "status": "degraded",
+        "text_only": false,
+        "providers": {
+          "asr": "groq:whisper-large-v3-turbo",
+          "llm": "groq:openai/gpt-oss-20b",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [
+          "tts_fallback:piper:en_US-lessac-low"
+        ],
+        "transcript": "Give me a quick checklist for a mapping mission.",
+        "response": "Check batteries, weight, and propeller condition; confirm GPS lock and compass calibration; set flight plan with waypoints, altitude, and overlap; verify camera settings and storage; test failsafes and return\u2011to\u2011home; ensure weather is within limits and you have necessary permits.",
+        "acks_spoken": [],
+        "first_audio_sentence": "Check batteries, weight,",
+        "error_events": [
+          "tts:model_terms_required"
+        ],
+        "internal_errors": [
+          "tts:groq:canopylabs/orpheus-v1-english: ProviderError: [groq:canopylabs/orpheus-v1-english] HTTP 400: The model `canopylabs/orpheus-v1-english` requires terms acceptance. Please have the org admin accept the terms at https://console.groq.com/playground?model=canopylabs%2Forpheus-v1-english",
+          "tts:groq:canopylabs/orpheus-v1-english: CircuitOpenError: [groq:canopylabs/orpheus-v1-english] circuit open, retry in 29.4s",
+          "tts:groq:canopylabs/orpheus-v1-english: CircuitOpenError: [groq:canopylabs/orpheus-v1-english] circuit open, retry in 25.6s"
+        ],
+        "budget": {
+          "asr_ms": 357.9,
+          "llm_ttft_ms": 311.4,
+          "first_segment_ms": 2.6,
+          "tts_ttfb_ms": 753.6,
+          "e2e_ms": 1425.6,
+          "llm_total_ms": 395.9,
+          "tts_total_ms": 5171.2,
+          "turn_total_ms": 5843.2,
+          "overhead_ms": 0.1
+        },
+        "wall_ms": 6123.4,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:canopylabs/orpheus-v1-english": {
+            "state": "open",
+            "failures": 1,
+            "retry_in_s": 24.7
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      },
+      {
+        "file": "q14",
+        "ref": "How cold is too cold for lithium polymer batteries?",
+        "status": "degraded",
+        "text_only": false,
+        "providers": {
+          "asr": "groq:whisper-large-v3-turbo",
+          "llm": "groq:openai/gpt-oss-20b",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [
+          "tts_fallback:piper:en_US-lessac-low"
+        ],
+        "transcript": "How cold is too cold for lithium polymer batteries?",
+        "response": "Below about 0\u202f\u00b0C is too cold for LiPo. Keep them above that, or store them in a warm place and let them warm to room temperature before use.",
+        "acks_spoken": [],
+        "first_audio_sentence": "Below about 0 \u00b0C is too cold",
+        "error_events": [],
+        "internal_errors": [
+          "tts:groq:canopylabs/orpheus-v1-english: CircuitOpenError: [groq:canopylabs/orpheus-v1-english] circuit open, retry in 21.1s",
+          "tts:groq:canopylabs/orpheus-v1-english: CircuitOpenError: [groq:canopylabs/orpheus-v1-english] circuit open, retry in 20.3s"
+        ],
+        "budget": {
+          "asr_ms": 332.4,
+          "llm_ttft_ms": 210.6,
+          "first_segment_ms": 24.2,
+          "tts_ttfb_ms": 852.6,
+          "e2e_ms": 1419.9,
+          "llm_total_ms": 294.0,
+          "tts_total_ms": 3239.2,
+          "turn_total_ms": 3806.5,
+          "overhead_ms": 0.1
+        },
+        "wall_ms": 4005.0,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:canopylabs/orpheus-v1-english": {
+            "state": "open",
+            "failures": 1,
+            "retry_in_s": 17.7
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      },
+      {
+        "file": "q19",
+        "ref": "What propeller size suits a five inch racing frame?",
+        "status": "degraded",
+        "text_only": false,
+        "providers": {
+          "asr": "groq:whisper-large-v3-turbo",
+          "llm": "groq:openai/gpt-oss-20b",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [
+          "tts_fallback:piper:en_US-lessac-low"
+        ],
+        "transcript": "Put propeller size suits a 5-inch racing frame.",
+        "response": "A 5\u2011inch racing frame usually runs a 5\u00d74.5\u202fin or 5\u00d74.8\u202fin prop. That size gives good thrust and efficiency for most 5\u2011inch motors.",
+        "acks_spoken": [],
+        "first_audio_sentence": "A 5\u2011inch racing frame usually runs a",
+        "error_events": [],
+        "internal_errors": [
+          "tts:groq:canopylabs/orpheus-v1-english: CircuitOpenError: [groq:canopylabs/orpheus-v1-english] circuit open, retry in 14.1s",
+          "tts:groq:canopylabs/orpheus-v1-english: CircuitOpenError: [groq:canopylabs/orpheus-v1-english] circuit open, retry in 12.8s",
+          "tts:groq:canopylabs/orpheus-v1-english: CircuitOpenError: [groq:canopylabs/orpheus-v1-english] circuit open, retry in 11.5s"
+        ],
+        "budget": {
+          "asr_ms": 270.0,
+          "llm_ttft_ms": 273.2,
+          "first_segment_ms": 4.3,
+          "tts_ttfb_ms": 1328.4,
+          "e2e_ms": 1890.7,
+          "llm_total_ms": 438.6,
+          "tts_total_ms": 3780.5,
+          "turn_total_ms": 4337.3,
+          "overhead_ms": 14.8
+        },
+        "wall_ms": 4637.1,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:canopylabs/orpheus-v1-english": {
+            "state": "open",
+            "failures": 1,
+            "retry_in_s": 10.1
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      }
+    ]
+  },
+  {
+    "scenario": "tts_all_down",
+    "description": "Every TTS provider down -> text-only response",
+    "faults": {
+      "asr_down": false,
+      "llm_timeout": false,
+      "llm_slow_ms": 0,
+      "tts_down": true,
+      "asr_extra_latency_ms": 0,
+      "error_rate": 0.0
+    },
+    "overrides": {
+      "tts_chain": [
+        "piper"
+      ]
+    },
+    "turns": [
+      {
+        "file": "q15",
+        "ref": "Can I fly near an airport for a college project?",
+        "status": "degraded",
+        "text_only": true,
+        "providers": {
+          "asr": "groq:whisper-large-v3-turbo",
+          "llm": "groq:openai/gpt-oss-20b"
+        },
+        "degraded": [
+          "tts_segment_dropped",
+          "tts_text_only"
+        ],
+        "transcript": "Can I fly near an airport for a college project?",
+        "response": "No, you must get clearance from the airport authority and the DGCA before flying near an airport. Check the NOTAMs and ensure you\u2019re within the allowed airspace limits. If you can\u2019t secure permission, stay outside the controlled zone.",
+        "acks_spoken": [],
+        "first_audio_sentence": null,
+        "error_events": [
+          "tts:injected_503",
+          "tts:tts_segment_dropped",
+          "tts:tts_unavailable"
+        ],
+        "internal_errors": [
+          "tts:piper:en_US-lessac-low: retry 1 after [piper:en_US-lessac-low] injected fault: TTS service unavailable (503)",
+          "tts:piper:en_US-lessac-low: retry 2 after [piper:en_US-lessac-low] injected fault: TTS service unavailable (503)",
+          "tts:piper:en_US-lessac-low: ProviderError: [piper:en_US-lessac-low] injected fault: TTS service unavailable (503)",
+          "tts:piper:en_US-lessac-low: retry 1 after [piper:en_US-lessac-low] injected fault: TTS service unavailable (503)",
+          "tts:piper:en_US-lessac-low: retry 2 after [piper:en_US-lessac-low] injected fault: TTS service unavailable (503)",
+          "tts:piper:en_US-lessac-low: ProviderError: [piper:en_US-lessac-low] injected fault: TTS service unavailable (503)"
+        ],
+        "budget": {
+          "asr_ms": 281.7,
+          "llm_ttft_ms": 749.6,
+          "first_segment_ms": 8.1,
+          "tts_ttfb_ms": null,
+          "e2e_ms": null,
+          "llm_total_ms": 803.7,
+          "tts_total_ms": 859.4,
+          "turn_total_ms": 1903.6,
+          "overhead_ms": null
+        },
+        "wall_ms": 2057.7,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 2,
+            "retry_in_s": 0.0
+          }
+        }
+      },
+      {
+        "file": "q16",
+        "ref": "What does the red zone mean on the Digital Sky map?",
+        "status": "degraded",
+        "text_only": true,
+        "providers": {
+          "asr": "groq:whisper-large-v3-turbo",
+          "llm": "groq:openai/gpt-oss-20b"
+        },
+        "degraded": [
+          "ack_spoken",
+          "tts_segment_dropped",
+          "tts_text_only"
+        ],
+        "transcript": "What does the red zone mean on the digital sky map?",
+        "response": "The red zone on the Digital Sky map shows restricted or controlled airspace where you cannot fly without explicit permission. It usually includes airport approach areas, military zones or special event airspace. Stay outside it unless you have clearance.",
+        "acks_spoken": [
+          "One moment."
+        ],
+        "first_audio_sentence": "One moment.",
+        "error_events": [
+          "tts:injected_503",
+          "tts:tts_segment_dropped",
+          "tts:tts_unavailable"
+        ],
+        "internal_errors": [
+          "tts:piper:en_US-lessac-low: retry 1 after [piper:en_US-lessac-low] injected fault: TTS service unavailable (503)",
+          "tts:piper:en_US-lessac-low: retry 2 after [piper:en_US-lessac-low] injected fault: TTS service unavailable (503)",
+          "tts:piper:en_US-lessac-low: ProviderError: [piper:en_US-lessac-low] injected fault: TTS service unavailable (503)",
+          "tts:piper:en_US-lessac-low: CircuitOpenError: [piper:en_US-lessac-low] circuit open, retry in 30.0s"
+        ],
+        "budget": {
+          "asr_ms": 335.7,
+          "llm_ttft_ms": 2313.8,
+          "first_segment_ms": 12.5,
+          "tts_ttfb_ms": null,
+          "e2e_ms": null,
+          "llm_total_ms": 2362.5,
+          "tts_total_ms": 408.5,
+          "turn_total_ms": 3070.6,
+          "overhead_ms": null,
+          "ack_audio_ms": 1837.8
+        },
+        "wall_ms": 3305.9,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "open",
+            "failures": 3,
+            "retry_in_s": 29.9
+          }
+        }
+      }
+    ]
+  },
+  {
+    "scenario": "flaky_30pct",
+    "description": "30% random transient failures on every primary provider",
+    "faults": {
+      "asr_down": false,
+      "llm_timeout": false,
+      "llm_slow_ms": 0,
+      "tts_down": false,
+      "asr_extra_latency_ms": 0,
+      "error_rate": 0.3
+    },
+    "overrides": {},
+    "turns": [
+      {
+        "file": "q03",
+        "ref": "How long can a five thousand milliamp hour battery keep a one kilogram quadcopter in the air?",
+        "status": "ok",
+        "text_only": false,
+        "providers": {
+          "asr": "groq:whisper-large-v3-turbo",
+          "llm": "groq:openai/gpt-oss-20b",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [],
+        "transcript": "How long can a 5000 mAh battery keep a 1 kg quadcopter in the air?",
+        "response": "I need the estimated power draw (in watts) of the quadcopter. With that I can calculate the flight time.",
+        "acks_spoken": [],
+        "first_audio_sentence": "I need the estimated power draw (in",
+        "error_events": [],
+        "internal_errors": [
+          "tts:piper:en_US-lessac-low: retry 1 after [piper:en_US-lessac-low] injected transient fault",
+          "tts:piper:en_US-lessac-low: retry 1 after [piper:en_US-lessac-low] injected transient fault"
+        ],
+        "budget": {
+          "asr_ms": 564.1,
+          "llm_ttft_ms": 693.2,
+          "first_segment_ms": 7.8,
+          "tts_ttfb_ms": 2355.7,
+          "e2e_ms": 3623.8,
+          "llm_total_ms": 722.5,
+          "tts_total_ms": 3301.8,
+          "turn_total_ms": 4566.9,
+          "overhead_ms": 3.0
+        },
+        "wall_ms": 4706.4,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      },
+      {
+        "file": "q07",
+        "ref": "Explain the difference between GPS mode and attitude mode.",
+        "status": "ok",
+        "text_only": false,
+        "providers": {
+          "asr": "groq:whisper-large-v3-turbo",
+          "llm": "groq:openai/gpt-oss-20b",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [],
+        "transcript": "Explain the difference between GPS mode and attitude mode.",
+        "response": "GPS mode uses the GPS module for position hold and navigation, so the quadcopter can maintain a fixed location or follow a waypoint. Attitude mode relies only on the IMU to keep a set attitude (roll, pitch, yaw) and altitude, without any external position reference.",
+        "acks_spoken": [],
+        "first_audio_sentence": "GPS mode uses the GPS module for",
+        "error_events": [],
+        "internal_errors": [
+          "asr:groq:whisper-large-v3-turbo: retry 1 after [groq:whisper-large-v3-turbo] injected transient fault",
+          "asr:groq:whisper-large-v3-turbo: retry 2 after [groq:whisper-large-v3-turbo] injected transient fault"
+        ],
+        "budget": {
+          "asr_ms": 457.4,
+          "llm_ttft_ms": 174.5,
+          "first_segment_ms": 12.0,
+          "tts_ttfb_ms": 714.2,
+          "e2e_ms": 1358.3,
+          "llm_total_ms": 239.1,
+          "tts_total_ms": 4255.2,
+          "turn_total_ms": 4899.4,
+          "overhead_ms": 0.2
+        },
+        "wall_ms": 5140.4,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      },
+      {
+        "file": "q08",
+        "ref": "My drone is drifting to the left in hover. What could cause that?",
+        "status": "ok",
+        "text_only": false,
+        "providers": {
+          "asr": "groq:whisper-large-v3-turbo",
+          "llm": "groq:openai/gpt-oss-20b",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [],
+        "transcript": "My drone is drifting to the left in hover, what could cause that?",
+        "response": "It could be a sensor bias, a motor imbalance, or a wind gust. Check the battery voltage, IMU calibration, and motor thrust. If the battery is low or the motors are out of balance, the drone will drift. Also verify that the wind is not blowing from the right.",
+        "acks_spoken": [],
+        "first_audio_sentence": "It could be a sensor bias,",
+        "error_events": [],
+        "internal_errors": [
+          "tts:piper:en_US-lessac-low: retry 1 after [piper:en_US-lessac-low] injected transient fault"
+        ],
+        "budget": {
+          "asr_ms": 301.3,
+          "llm_ttft_ms": 275.6,
+          "first_segment_ms": 9.0,
+          "tts_ttfb_ms": 951.2,
+          "e2e_ms": 1537.3,
+          "llm_total_ms": 353.5,
+          "tts_total_ms": 4869.3,
+          "turn_total_ms": 5455.4,
+          "overhead_ms": 0.2
+        },
+        "wall_ms": 5652.4,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      },
+      {
+        "file": "q12",
+        "ref": "The motors are getting very hot after landing. Is that a problem?",
+        "status": "ok",
+        "text_only": false,
+        "providers": {
+          "asr": "groq:whisper-large-v3-turbo",
+          "llm": "groq:openai/gpt-oss-20b",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [],
+        "transcript": "The motors are getting very hot after landing. Is that a problem?",
+        "response": "Yes, motors that stay hot after landing can indicate overcurrent, a fault, or a cooling issue. Check the battery voltage, current draw, and motor RPM. If the motors were running at high throttle or a fault is present, let them cool and inspect for damage before the next flight.",
+        "acks_spoken": [],
+        "first_audio_sentence": "Yes, motors that stay hot after landing",
+        "error_events": [],
+        "internal_errors": [
+          "asr:groq:whisper-large-v3-turbo: retry 1 after [groq:whisper-large-v3-turbo] injected transient fault",
+          "asr:groq:whisper-large-v3-turbo: retry 2 after [groq:whisper-large-v3-turbo] injected transient fault",
+          "tts:piper:en_US-lessac-low: retry 1 after [piper:en_US-lessac-low] injected transient fault",
+          "tts:piper:en_US-lessac-low: retry 1 after [piper:en_US-lessac-low] injected transient fault"
+        ],
+        "budget": {
+          "asr_ms": 568.8,
+          "llm_ttft_ms": 574.0,
+          "first_segment_ms": 4.7,
+          "tts_ttfb_ms": 929.6,
+          "e2e_ms": 2077.4,
+          "llm_total_ms": 655.5,
+          "tts_total_ms": 5380.3,
+          "turn_total_ms": 6528.0,
+          "overhead_ms": 0.3
+        },
+        "wall_ms": 6699.7,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      },
+      {
+        "file": "q18",
+        "ref": "My video feed keeps breaking up. What should I try?",
+        "status": "ok",
+        "text_only": false,
+        "providers": {
+          "asr": "groq:whisper-large-v3-turbo",
+          "llm": "groq:openai/gpt-oss-20b",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [],
+        "transcript": "My video feed keeps breaking up. What should I try?",
+        "response": "Try lowering the video bitrate or resolution, check the antenna alignment, and make sure the receiver is on a clear channel. Also ensure the battery voltage is stable; low voltage can cause video dropouts. If the problem persists, swap the video module or test with a different receiver.",
+        "acks_spoken": [],
+        "first_audio_sentence": "Try lowering the video bitrate or resolution,",
+        "error_events": [],
+        "internal_errors": [
+          "asr:groq:whisper-large-v3-turbo: retry 1 after [groq:whisper-large-v3-turbo] injected transient fault",
+          "tts:piper:en_US-lessac-low: retry 1 after [piper:en_US-lessac-low] injected transient fault",
+          "tts:piper:en_US-lessac-low: retry 2 after [piper:en_US-lessac-low] injected transient fault"
+        ],
+        "budget": {
+          "asr_ms": 387.4,
+          "llm_ttft_ms": 218.9,
+          "first_segment_ms": 8.9,
+          "tts_ttfb_ms": 816.2,
+          "e2e_ms": 1431.6,
+          "llm_total_ms": 291.4,
+          "tts_total_ms": 5051.7,
+          "turn_total_ms": 5667.1,
+          "overhead_ms": 0.2
+        },
+        "wall_ms": 5873.6,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      },
+      {
+        "file": "q20",
+        "ref": "How do I estimate flight time for a payload drop mission?",
+        "status": "degraded",
+        "text_only": false,
+        "providers": {
+          "asr": "groq:whisper-large-v3-turbo",
+          "llm": "degraded:canned",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [
+          "ack_spoken",
+          "llm_fallback:degraded:canned"
+        ],
+        "transcript": "How do I estimate flight time for a payload drop mission?",
+        "response": "I can't reach my reasoning service right now, so I'll keep this simple. Hold a safe hover or return to home if battery or link is marginal, and ask me again in a few seconds.",
+        "acks_spoken": [
+          "One moment."
+        ],
+        "first_audio_sentence": "One moment.",
+        "error_events": [
+          "llm:timeout"
+        ],
+        "internal_errors": [
+          "llm:groq:openai/gpt-oss-20b: timeout: ",
+          "tts:piper:en_US-lessac-low: retry 1 after [piper:en_US-lessac-low] injected transient fault",
+          "tts:piper:en_US-lessac-low: retry 1 after [piper:en_US-lessac-low] injected transient fault"
+        ],
+        "budget": {
+          "asr_ms": 311.6,
+          "llm_ttft_ms": 4027.9,
+          "first_segment_ms": 0.3,
+          "tts_ttfb_ms": 650.3,
+          "e2e_ms": 4990.5,
+          "llm_total_ms": 4050.2,
+          "tts_total_ms": 3020.2,
+          "turn_total_ms": 7360.1,
+          "overhead_ms": 0.4,
+          "ack_audio_ms": 1814.2
+        },
+        "wall_ms": 7513.2,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 1,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "degraded:canned": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      },
+      {
+        "file": "q21",
+        "ref": "What should the center of gravity be on a fixed wing?",
+        "status": "degraded",
+        "text_only": false,
+        "providers": {
+          "asr": "groq:whisper-large-v3-turbo",
+          "llm": "groq:openai/gpt-oss-20b",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [
+          "ack_spoken"
+        ],
+        "transcript": "What should the center of gravity be on a fixed wing?",
+        "response": "For a fixed\u2011wing, the CG should lie between 25\u202f% and 35\u202f% of the mean aerodynamic chord (MAC) from the leading edge, usually a few inches aft of the wing root. This keeps the aircraft stable and gives enough control authority. If you\u2019re unsure, measure the CG and compare it to that range.",
+        "acks_spoken": [
+          "One moment."
+        ],
+        "first_audio_sentence": "One moment.",
+        "error_events": [],
+        "internal_errors": [
+          "asr:groq:whisper-large-v3-turbo: retry 1 after [groq:whisper-large-v3-turbo] injected transient fault",
+          "tts:piper:en_US-lessac-low: retry 1 after [piper:en_US-lessac-low] injected transient fault",
+          "tts:piper:en_US-lessac-low: retry 2 after [piper:en_US-lessac-low] injected transient fault"
+        ],
+        "budget": {
+          "asr_ms": 354.3,
+          "llm_ttft_ms": 1879.2,
+          "first_segment_ms": 7.9,
+          "tts_ttfb_ms": 727.7,
+          "e2e_ms": 2969.3,
+          "llm_total_ms": 1954.5,
+          "tts_total_ms": 5227.4,
+          "turn_total_ms": 7468.9,
+          "overhead_ms": 0.2,
+          "ack_audio_ms": 1858.6
+        },
+        "wall_ms": 7706.4,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "degraded:canned": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      },
+      {
+        "file": "q23",
+        "ref": "What is the safe distance to keep from people when flying?",
+        "status": "ok",
+        "text_only": false,
+        "providers": {
+          "asr": "groq:whisper-large-v3-turbo",
+          "llm": "groq:openai/gpt-oss-20b",
+          "tts": "piper:en_US-lessac-low"
+        },
+        "degraded": [],
+        "transcript": "What is the safe distance to keep from people when flying?",
+        "response": "Keep at least 50\u202fmeters away from people and crowds. If you\u2019re in a crowded area, stay beyond that radius or use a no\u2011fly zone. If you\u2019re unsure, hold a safe distance and check local regulations.",
+        "acks_spoken": [],
+        "first_audio_sentence": "Keep at least 50 meters away from",
+        "error_events": [],
+        "internal_errors": [
+          "tts:piper:en_US-lessac-low: retry 1 after [piper:en_US-lessac-low] injected transient fault"
+        ],
+        "budget": {
+          "asr_ms": 347.7,
+          "llm_ttft_ms": 193.4,
+          "first_segment_ms": 9.4,
+          "tts_ttfb_ms": 761.3,
+          "e2e_ms": 1312.0,
+          "llm_total_ms": 244.8,
+          "tts_total_ms": 3549.4,
+          "turn_total_ms": 4100.2,
+          "overhead_ms": 0.2
+        },
+        "wall_ms": 4306.6,
+        "breakers": {
+          "groq:whisper-large-v3-turbo": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "groq:openai/gpt-oss-20b": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "piper:en_US-lessac-low": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          },
+          "degraded:canned": {
+            "state": "closed",
+            "failures": 0,
+            "retry_in_s": 0.0
+          }
+        }
+      }
+    ]
+  }
+]
