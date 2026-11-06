@@ -59,7 +59,11 @@ class Session:
         self.server_vad = start.server_vad
         self.buf_has_speech = False
         self._send_lock = asyncio.Lock()
-        settings = s if not start.persona else s.with_overrides(persona=start.persona)
+        settings = s
+        if start.persona:
+            settings = settings.with_overrides(persona=start.persona)
+        if start.chunk_mode:
+            settings = settings.with_overrides(chunk_mode=start.chunk_mode)
         self.faults = s.faults
         if start.faults and s.allow_client_faults:
             self.faults = s.faults.merged(start.faults)
