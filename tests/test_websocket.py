@@ -103,3 +103,10 @@ def test_bad_event_is_rejected_without_closing(settings):
         assert err["type"] == "error" and err["code"] == "bad_event"
         ws.send_text(json.dumps({"type": "text.input", "text": "still alive?"}))
         assert collect_until_done(ws)[-1]["status"] == "ok"
+
+
+def test_serves_web_client(settings):
+    with client(settings) as c:
+        assert "SkyMate" in c.get("/").text
+        js = c.get("/static/app.js")
+        assert js.status_code == 200 and "audio.chunk" in js.text

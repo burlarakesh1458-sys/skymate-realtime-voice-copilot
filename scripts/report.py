@@ -114,6 +114,39 @@ def chart_stacked(label: str, turns: list[dict], path: str) -> None:
     plt.close(fig)
 
 
+def ablation_section(groups: dict[str, list[dict]], outdir: str) -> list[str]:
+    """Paired comparison of the interleaved chunk-mode A/B (labels ab-<mode>).
+
+    scripts/chunk_ablation.sh runs the same utterance list in the same order for every mode, so the
+    i-th turn (by time) of each mode is the same utterance.
+    """
+    ab = {k[3:]: v for k, v in groups.items() if k.startswith("ab-")}
+    if "full" not in ab:
+        return []
+    order = [m for m in ("full", "sentence", "clause", "eager") if m in ab]
+    lines = [
+        "## Chunking A/B (interleaved, same utterances, fresh session per run)",
+        "",
+        "| mode | n | e2e p50 | e2e p95 | TTS TTFB p50 | TTS TTFB p95 "
+        "| median paired e2e saving vs `full` | wins vs `full` |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    full_by_idx = [t["budget"]["e2e_ms"] for t in sorted(ab["full"], key=lambda t: t["ts"])]
+    for m in order:
+        ts = sorted(ab[m], key=lambda t: t["ts"])
+        e2e = [t["budget"]["e2e_ms"] for t in ts]
+        tts = [t["budget"]["tts_ttfb_ms"] for t in ts]
+        diffs = [f - x for f, x in zip(full_by_idx, e2e, strict=False)] if m != "full" else []
+        lines.append(
+            f"| `{m}` | {len(ts)} | {fmt(pct(e2e, 50))} | {fmt(pct(e2e, 95))} | "
+            f"{fmt(pct(tts, 50))} | {fmt(pct(tts, 95))} | "
+            f"{fmt(float(np.median(diffs))) if diffs else '–'} | {sum(d > 0 for d in diffs) if diffs else '–'}"
+            f"{'/' + str(len(diffs)) if diffs else ''} |"
+        )
+    chart_percentiles({f"ab-{m}": ab[m] for m in order}, os.path.join(outdir, "chunking_ablation.png"))
+    return [*lines, "", "![chunking A/B](chunking_ablation.png)", ""]
+
+
 def chart_percentiles(groups: dict[str, list[dict]], path: str) -> None:
     import matplotlib
 
@@ -174,6 +207,7 @@ def main() -> None:
     if cmp_labels:
         chart_percentiles({lab: groups[lab] for lab in cmp_labels}, os.path.join(outdir, "latency_p50_p95.png"))
         parts += ["## p50 vs p95 by stage", "", "![p50/p95](latency_p50_p95.png)", ""]
+    parts += ablation_section(groups, outdir)
     with open(args.out, "w") as f:
         f.write("\n".join(parts))
     print("\n".join(parts))
