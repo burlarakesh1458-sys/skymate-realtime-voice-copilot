@@ -314,23 +314,43 @@ class VoicePipeline:
         return False
 
     async def _tts_consume(self, ctx: TurnContext, queue: asyncio.Queue) -> bool:
-        """Returns True if the turn degraded to text-only."""
+        """Speak segments as they arrive. Returns True if the turn degraded to text-only.
+
+        A single segment that fails on every provider is dropped (its text was already streamed);
+        only two consecutive failures switch the rest of the turn to text-only, so one unlucky
+        sentence doesn't silence an otherwise healthy reply.
+        """
         seq = [0]
         text_only = False
+        consecutive_failures = 0
         while True:
             seg = await queue.get()
             if seg is None:
                 break
             if text_only:
                 continue
-            ok = await self._speak_segment(ctx, seg, seq)
-            if not ok:
-                text_only = True
-                ctx.record.degraded.append("tts_text_only")
-                await self._emit_error(
-                    ctx, "tts", "tts_unavailable", "All TTS providers failed; continuing as text-only", recoverable=True
-                )
+            if await self._speak_segment(ctx, seg, seq):
+                consecutive_failures = 0
+                continue
+            consecutive_failures += 1
+            if consecutive_failures < 2:
+                ctx.record.degraded.append("tts_segment_dropped")
+                await self._emit_error(ctx, "tts", "tts_segment_dropped", "TTS failed for one sentence; skipped it")
+                continue
+            text_only = True
+            ctx.record.degraded.append("tts_text_only")
+            await self._emit_error(
+                ctx, "tts", "tts_unavailable", "All TTS providers failed; continuing as text-only", recoverable=True
+            )
         ctx.sw.mark("tts_done")
+        # nothing was ever spoken for a non-empty reply -> the client must render it as text
+        if (
+            not text_only
+            and ctx.sw.get("first_audio_sent") is None
+            and ctx.record.degraded.count("tts_segment_dropped")
+        ):
+            text_only = True
+            ctx.record.degraded.append("tts_text_only")
         return text_only
 
     # ------------------------------------------------------------------ turn

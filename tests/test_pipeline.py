@@ -163,3 +163,23 @@ async def test_text_input_skips_asr(settings):
     c, _ = ctx()
     rec = await pipe.run_turn(c, text="hello")
     assert asr.calls == 0 and rec.providers["asr"] == "text" and rec.response
+
+
+class FlakyOnceTTS(MockTTS):
+    """Fails every attempt for the first sentence only."""
+
+    async def synthesize(self, text):
+        if not self.sentences and text.startswith("Battery"):
+            raise ProviderError("flaky:tts", "503")
+        async for item in super().synthesize(text):
+            yield item
+
+
+async def test_single_failed_segment_is_dropped_not_text_only(settings):
+    tts = FlakyOnceTTS(name="flaky:tts")
+    pipe = make(settings, [MockASR()], [MockLLM()], [tts])
+    c, events = ctx()
+    rec = await pipe.run_turn(c, pcm=PCM)
+    assert not rec.text_only
+    assert "tts_segment_dropped" in rec.degraded
+    assert any(isinstance(e, TTSAudio) for e in events)  # the second sentence was still spoken

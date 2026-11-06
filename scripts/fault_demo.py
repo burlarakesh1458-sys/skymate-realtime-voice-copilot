@@ -47,7 +47,7 @@ SCENARIOS = [
     ),
     (
         "llm_slow",
-        "LLM first token delayed by 2.5 s (under the 6 s TTFT timeout)",
+        "LLM first token delayed by 2.5 s (under the 4 s TTFT timeout)",
         {},
         FaultConfig(llm_slow_ms=2500),
         ["q06", "q13"],
@@ -85,7 +85,7 @@ SCENARIOS = [
         "30% random transient failures on every primary provider",
         {},
         FaultConfig(error_rate=0.3),
-        ["q03", "q07", "q08", "q12", "q18", "q20"],
+        ["q03", "q07", "q08", "q12", "q18", "q20", "q21", "q23"],
     ),
 ]
 

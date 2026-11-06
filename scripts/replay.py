@@ -70,7 +70,7 @@ def wer(ref: str, hyp: str) -> float:
     return d[len(h)] / max(1, len(r))
 
 
-def load_inputs(directory: str, limit: int | None) -> list[dict]:
+def load_inputs(directory: str, limit: int | None, files: list[str] | None = None) -> list[dict]:
     manifest_path = os.path.join(directory, "manifest.json")
     if os.path.exists(manifest_path):
         with open(manifest_path) as f:
@@ -79,6 +79,9 @@ def load_inputs(directory: str, limit: int | None) -> list[dict]:
         items = [
             {"file": os.path.basename(p), "text": None} for p in sorted(glob.glob(os.path.join(directory, "*.wav")))
         ]
+    if files:
+        wanted = {f if f.endswith(".wav") else f + ".wav" for f in files}
+        items = [it for it in items if it["file"] in wanted]
     for it in items:
         it["path"] = os.path.join(directory, it["file"])
     return items[:limit] if limit else items
@@ -227,6 +230,7 @@ def main() -> None:
     ap.add_argument("--url", default="ws://127.0.0.1:8000/ws")
     ap.add_argument("--label", default="replay")
     ap.add_argument("--limit", type=int)
+    ap.add_argument("--files", help="comma-separated subset, e.g. q01,q05")
     ap.add_argument("--gap", type=float, default=2.5, help="seconds between turns (provider rate limits)")
     ap.add_argument("--realtime", action="store_true", help="stream audio at 1x speed like a live mic")
     ap.add_argument("--server-vad", action="store_true", help="let the server's VAD endpoint (no explicit EoU)")
@@ -235,11 +239,15 @@ def main() -> None:
     )
     ap.add_argument("--chunk-mode", choices=["full", "sentence", "clause", "eager"], help="override server CHUNK_MODE")
     ap.add_argument("--out", help="write per-turn results JSON here")
+    ap.add_argument("--append", action="store_true", help="append to an existing results file")
     args = ap.parse_args()
 
-    items = load_inputs(args.dir, args.limit)
+    items = load_inputs(args.dir, args.limit, args.files.split(",") if args.files else None)
     results = asyncio.run(replay_ws(args, items) if args.mode == "ws" else replay_inproc(args, items))
     out = args.out or f"reports/replay_{args.label}.json"
+    if args.append and os.path.exists(out):
+        with open(out) as f:
+            results = json.load(f) + results
     os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
     with open(out, "w") as f:
         json.dump(results, f, indent=2)

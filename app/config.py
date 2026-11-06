@@ -116,13 +116,13 @@ class Settings:
     vad_silence_ms: int = 700
     vad_min_speech_ms: int = 250
     max_utterance_s: float = 30.0
-    chunk_mode: str = "clause"  # clause | sentence | full (see chunker.py)
+    chunk_mode: str = "eager"  # full | sentence | clause | eager (see chunker.py; eager won the A/B)
     asr_partials: bool = False  # interim transcripts cost one ASR call per interval
     asr_partial_interval_ms: int = 1200
 
     # --- resilience ---
     asr_timeout_s: float = 8.0
-    llm_ttft_timeout_s: float = 6.0
+    llm_ttft_timeout_s: float = 4.0  # ~5x the measured p95 TTFT (813 ms)
     llm_total_timeout_s: float = 25.0
     tts_timeout_s: float = 8.0
     retry_attempts: int = 2  # retries after the first attempt (retryable errors only)

@@ -63,8 +63,10 @@ async def main(url: str, utter_dir: str, gap: float) -> int:
     import httpx
 
     http_url = url.replace("ws://", "http://").replace("/ws", "")
-    h = httpx.get(f"{http_url}/health", timeout=5).json()
-    check("health", h.get("status") == "ok", providers=h.get("providers"))
+    # trust_env=False: never route localhost through an HTTP(S)_PROXY from the environment
+    # (in the sandbox the proxy answered {"status":"ok"} itself and produced a false pass).
+    h = httpx.get(f"{http_url}/health", timeout=5, trust_env=False).json()
+    check("health", h.get("status") == "ok" and bool(h.get("providers", {}).get("asr")), providers=h.get("providers"))
 
     # 1. text turn: protocol contract + ordering
     ws, started = await session(url)
