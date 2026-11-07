@@ -13,8 +13,8 @@ COPY app ./app
 COPY web ./web
 COPY scripts ./scripts
 COPY data/utterances ./data/utterances
-RUN useradd -m voice && mkdir -p reports && chown -R voice /app
-USER voice
+RUN useradd -m skymate && mkdir -p reports && chown -R skymate /app
+USER skymate
 EXPOSE 8000
 HEALTHCHECK --interval=15s --timeout=3s --start-period=60s CMD curl -fs localhost:8000/health || exit 1
 CMD ["uvicorn", "app.server:app", "--host", "0.0.0.0", "--port", "8000"]
