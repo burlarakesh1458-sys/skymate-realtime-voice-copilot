@@ -1,5 +1,8 @@
 # SkyMate: a real-time voice copilot for drone operations
 
+<!-- links -->
+[![CI](https://github.com/burlarakesh1458-sys/skymate-realtime-voice-copilot/actions/workflows/ci.yml/badge.svg)](https://github.com/burlarakesh1458-sys/skymate-realtime-voice-copilot/actions/workflows/ci.yml) **Live demo:** <http://rakeshburla.dpdns.org/skymate-realtime-voice-copilot/> · **Code:** <https://github.com/burlarakesh1458-sys/skymate-realtime-voice-copilot> · **Resume bullets:** [RESUME_BULLETS.md](RESUME_BULLETS.md) · **License:** MIT
+
 **Browser mic → WebSocket → ASR → streaming LLM → streaming TTS → speaker.** It records a latency budget for every turn and keeps working when a provider fails.
 
 ![tests](https://img.shields.io/badge/pytest-45%20passed-brightgreen) ![e2e](https://img.shields.io/badge/p50%20time--to--first--audio-1.0%20s-blue) ![python](https://img.shields.io/badge/python-3.12-blue) ![license](https://img.shields.io/badge/license-MIT-lightgrey)
